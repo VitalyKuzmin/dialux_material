@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<title>Color Explorer (Three.js)</title>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<link rel=stylesheet href="css/base.css" />
+</head>
+
+<body>
+
+	<script src="js/Three.js"></script>
+	<script src="js/Detector.js"></script>
+	<script src="js/OrbitControls.js"></script>
+	<script src="js/THREEx.FullScreen.js"></script>
+	<script src="js/THREEx.WindowResize.js"></script>
+
+	<script type='text/javascript' src='js/DAT.GUI.min.js'></script>
+	<script type='text/javascript' src='js/tools.js'></script>
+	<!-- ------------------------------------------------------------ -->
+	<!-- Tools -->
+
+
+
+
+	<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
+	<script>
+		//http://stemkoski.github.io
+
+
+		// MAIN
+		// standard global variables
+		var container, scene, camera, renderer, controls;
+
+		// custom global variables
+		var sphere, parameters, gui, refractSphereCamera;
+
+		var TransMap = new THREE.CubeRefractionMapping(); //SphericalRefractionMapping
+		var ReflMap = new THREE.SphericalReflectionMapping(); //CubeReflectionMapping
+
+
+
+		var def_parameters =
+		{
+			color: [0, 0, 0],//"#ff0000", // color (change "#" to "0x")
+			colorA: [255, 0, 0],//"#ff0000", // color (change "#" to "0x")
+			colorE: [0, 0, 0],//"#000000", // color (change "#" to "0x")
+			colorS: "#ffffff", // color (change "#" to "0x")  // #ffff00
+			shininess: 40,
+			transparent: true,
+			opacity: 1,
+			visible: true,
+			material: "Phong",
+			reflectivity: 0.5,
+			refractionRatio: 1.01,
+			metal: true,
+			mapping: "Reflection", //Refraction
+			reset: function () { resetSphere() }
+		};
+
+
+
+		init();
+		animate();
+
+		// FUNCTIONS 		
+		function init() {
+			// SCENE
+			scene = new THREE.Scene();
+			// CAMERA
+			//var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
+			//var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
+			//camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+			 camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 20000); //10, 100
+			//camera.position.z = 35;
+			scene.add(camera);
+			camera.position.set(0, 150, 400);
+
+			//camera.lookAt(scene.position);
+			// RENDERER
+			// if (Detector.webgl)
+			// 	renderer = new THREE.WebGLRenderer({ antialias: true });
+			// else
+			// 	renderer = new THREE.CanvasRenderer();
+
+
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			//renderer.setPixelRatio(window.devicePixelRatio);
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			//renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
+			container = document.getElementById('ThreeJS');
+			container.appendChild(renderer.domElement);
+			// EVENTS
+			THREEx.WindowResize(renderer, camera);
+			THREEx.FullScreen.bindKey({ charCode: 'm'.charCodeAt(0) });
+			// CONTROLS
+			controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+
+			// LIGHT
+			var light = new THREE.PointLight(0xffffff);
+			light.position.set(-100, 150, 100);
+			scene.add(light);
+
+			var light2 = new THREE.AmbientLight(0x333333);
+			light2.position.set(light.position);
+			scene.add(light2);
+
+
+			// FLOOR
+			var floorTexture = new THREE.ImageUtils.loadTexture('images/checkerboard.jpg');
+			floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+			floorTexture.repeat.set(10, 10);
+			var floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture, side: THREE.DoubleSide });
+			var floorGeometry = new THREE.PlaneGeometry(1000, 1000, 10, 10);
+			var floor = new THREE.Mesh(floorGeometry, floorMaterial);
+			floor.position.y = -100;
+			floor.rotation.x = Math.PI / 2;
+			scene.add(floor);
+
+			// SKYBOX/FOG
+			//var skyBoxGeometry = new THREE.SphereGeometry( 10000, 10000, 10000 );
+			//var skyBoxMaterial = new THREE.MeshBasicMaterial( { color: 0x9999ff, side: THREE.BackSide } );
+			//var skyBox = new THREE.Mesh( skyBoxGeometry, skyBoxMaterial );
+			// scene.add(skyBox);
+			//scene.fog = new THREE.FogExp2(0x9999ff, 0.00025);
+
+
+			////////////// CUSTOM //////////////
+
+
+			refractSphereCamera = new THREE.CubeCamera(0.1, 5000, 512);
+			scene.add(refractSphereCamera);
+
+
+			var sphereGeometry = new THREE.SphereGeometry(100, 50, 50);
+			var sphereMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000, transparent: true, opacity: 1 });
+			sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+			sphere.position.set(0, 30, 0);
+			scene.add(sphere);
+
+			var axes = new THREE.AxisHelper(10);
+			scene.add(axes);
+
+			gui = new dat.GUI();
+			parameters = { ...def_parameters }
+
+
+			// var Color = gui.addColor(parameters, 'color').name('Color').listen();
+			// Color.onChange(function (value) // onFinishChange
+			// {
+			// 	value = value.replace("#", "0x");
+			// 	sphere.material.color.setHex(value); //
+			// 	sphere.material.ambient.setHex(value); //)
+			// });
+
+
+
+
+			var elem;
+
+			var folder1 = gui.addFolder('Colors');
+
+			elem = folder1.addColor(parameters, 'color').name('Color (Diffuse)').listen();
+			elem.onChange(value => set_color(sphere.material.color, value)); //sphere.material.color.setHex(value.replace("#", "0x"));
+
+			elem = folder1.addColor(parameters, 'colorA').name('Color (Ambient)').listen();
+			elem.onChange(value => set_color(sphere.material.ambient, value)); //sphere.material.ambient.setHex(value.replace("#", "0x"));
+
+			elem = folder1.addColor(parameters, 'colorE').name('Color (Emissive)').listen();
+			elem.onChange(value => set_color(sphere.material.emissive, value)); //sphere.material.emissive.setHex(value.replace("#", "0x"));
+
+			elem = folder1.addColor(parameters, 'colorS').name('Color (Specular)').listen();
+			elem.onChange(value => set_color(sphere.material.specular, value)); //sphere.material.specular.setHex(value.replace("#", "0x"));
+
+			folder1.open();
+
+
+			elem = gui.add(parameters, 'shininess').min(0).max(128).step(1).name('Shininess').listen();
+			elem.onChange(value => sphere.material.shininess = value);
+
+			elem = gui.add(parameters, 'transparent', [true, false]).name('Transparent').listen();
+			elem.onChange(value => sphere.material.transparent = to_bool(value)); //value == "true" ? true : false
+
+			elem = gui.add(parameters, 'opacity').min(0).max(1).step(0.01).name('Opacity').listen();
+			elem.onChange(value => sphere.material.opacity = value);
+
+
+			elem = gui.add(parameters, 'mapping', ["Refraction", "Reflection"]).name('Mapping').listen();
+			elem.onChange(value => updateMapping(value));
+
+			// elem = gui.add(parameters, 'metal', [true, false]).name('Metal').listen();
+			// elem.onChange(value => sphere.material.metal = value == "true" ? true : false; });
+
+			elem = gui.add(parameters, 'reflectivity').min(0.00).max(1.00).step(0.01).name('Reflectivity').listen();
+			elem.onChange(
+				value => {sphere.material.reflectivity = value; render()}
+			);
+
+			elem = gui.add(parameters, 'refractionRatio').min(1.00).max(2.00).step(0.01).name('RefractionRatio').listen();
+			elem.onChange(value => sphere.material.refractionRatio = 1 / value);
+
+
+
+			gui.add(parameters, 'reset').name("Reset Sphere Parameters");
+
+			gui.open();
+			updateSphere();
+
+
+		}
+
+
+		function set_color(color, c) {
+			if (typeof c === 'string')
+				color.setHex(c.replace("#", "0x"))
+			else if (Array.isArray(c))
+				color.setRGB(c[0], c[1], c[2])
+			else
+				color.setRGB(c.r, c.g, c.b)
+		}
+
+
+		function to_bool(value) {
+			return (value == "true") ? true : false
+		}
+
+		function updateMapping(value) {
+			if (value == "Reflection")
+				refractSphereCamera.renderTarget.mapping = ReflMap;
+			else if (value == "Refraction")
+				refractSphereCamera.renderTarget.mapping = TransMap;
+		}
+
+
+		function getParamsFromUrl() {
+			const queryString = window.location.search;
+			if (queryString != "") {
+				var url_prms = '{"D":[0,0,0],"S":[109,143,69],"T":[109,143,69],"Sh":40}'
+				//var url_prms = new URLSearchParams(queryString).get('params');
+				url_prms = JSON.parse(url_prms);
+
+				parameters.color = url_prms.D; //rgbTo1
+				parameters.colorS = url_prms.S;
+				parameters.colorA = rgbMix(url_prms.D, url_prms.S, url_prms.T);
+
+				var is_transparent = (rgbSum(url_prms.T) > 0) ? true : false;
+
+				parameters.mapping = is_transparent ? "Reflection" : "Refraction";
+
+				sphere.reflectivity = is_transparent ? rgbSum(url_prms.T) + rgbSum(url_prms.S) : rgbSum(url_prms.S);
+
+
+				parameters.shininess = url_prms.Sh;
+
+
+			}
+		}
+
+
+
+		function updateSphere() {
+
+
+			//Colors
+			set_color(sphere.material.color, parameters.color);
+			set_color(sphere.material.ambient, parameters.colorA);
+			set_color(sphere.material.emissive, parameters.colorE);
+			set_color(sphere.material.specular, parameters.colorS);
+
+			sphere.material.shininess = parameters.shininess;
+			sphere.material.opacity = parameters.opacity;
+			sphere.material.transparent = parameters.transparent;
+
+			sphere.material.reflectivity = parameters.reflectivity;
+			sphere.material.refractionRatio = parameters.refractionRatio;
+			sphere.material.metal = parameters.metal;
+
+			sphere.material.envMap = refractSphereCamera.renderTarget;
+
+
+			//sphere.material.fog = false;//true;
+
+			//sphere.material.combine = THREE.AddOperation; //MultiplyOperation
+
+			updateMapping(parameters.mapping)
+
+		}
+
+		function resetSphere() {
+			parameters = { ...def_parameters };
+			updateSphere();
+		}
+
+		function animate() {
+			requestAnimationFrame(animate);
+			render();
+			update();
+		}
+
+		function update() {
+			controls.update();
+			//stats.update();
+		}
+
+		function render() {
+
+
+			sphere.visible = false;
+			refractSphereCamera.updateCubeMap(renderer, scene);
+			sphere.visible = true;
+
+			renderer.render(scene, camera);
+		}
+
+	</script>
+
+</body>
+
+</html>

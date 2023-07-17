@@ -13523,6 +13523,9 @@ THREE.MeshLambertMaterial.prototype.clone = function () {
  * }
  */
 
+
+
+
 THREE.MeshPhongMaterial = function (parameters) {
 
 	THREE.Material.call(this);
@@ -13574,6 +13577,7 @@ THREE.MeshPhongMaterial = function (parameters) {
 	this.setValues(parameters);
 
 };
+
 
 THREE.MeshPhongMaterial.prototype = Object.create(THREE.Material.prototype);
 
@@ -18488,6 +18492,12 @@ THREE.ShaderLib = {
 			THREE.ShaderChunk["morphtarget_pars_vertex"],
 			THREE.ShaderChunk["skinning_pars_vertex"],
 			THREE.ShaderChunk["shadowmap_pars_vertex"],
+
+			// //custom start 
+			// "uniform float mRefractionRatio;",
+			// "varying vec3 vReflect;",
+			// "varying vec3 vRefract;",
+			// //custom end
 
 			"void main() {",
 
@@ -23831,6 +23841,7 @@ THREE.WebGLRenderer = function (parameters) {
 
 		var u, a, identifiers, i, parameters, maxLightCount, maxBones, maxShadows, shaderID;
 
+
 		if (material instanceof THREE.MeshDepthMaterial) {
 
 			shaderID = 'depth';
@@ -23847,7 +23858,7 @@ THREE.WebGLRenderer = function (parameters) {
 
 			shaderID = 'lambert';
 
-		} else if (material instanceof THREE.MeshPhongMaterial) {
+		} else if (material instanceof THREE.MeshPhongMaterial) { //
 
 			shaderID = 'phong';
 
@@ -23865,7 +23876,12 @@ THREE.WebGLRenderer = function (parameters) {
 
 		}
 
-		if (shaderID) {
+
+		// if(material instanceof  DialuxMaterial ){
+		// 	shaderID = 'dialux';
+		// }
+
+		if (shaderID && !(material instanceof DialuxMaterial)) {
 
 			setMaterialShaders(material, THREE.ShaderLib[shaderID]);
 
