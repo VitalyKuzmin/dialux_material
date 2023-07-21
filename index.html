@@ -2,95 +2,95 @@
 <html lang="en">
 
 <head>
-	<title>Color Explorer (Three.js)</title>
+	<title>Dialux Material</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-	<link rel=stylesheet href="css/base.css" />
+	<link rel=stylesheet href="css/main.css" />
+
 </head>
+
 
 <body>
 
-	<script src="js/Three.js"></script>
-	<script src="js/Detector.js"></script>
-	<script src="js/OrbitControls.js"></script>
-	<script src="js/THREEx.KeyboardState.js"></script>
-	<script src="js/THREEx.FullScreen.js"></script>
-	<script src="js/THREEx.WindowResize.js"></script>
-
-	<script type='text/javascript' src='js/DAT.GUI.min.js'></script>
-	<script type='text/javascript' src='js/tools.js'></script>
-	<script type='text/javascript' src='js/color_convert.js'></script>
-
-	<script src="js/shaders/DialuxShader.js"></script>
-	<!-- ------------------------------------------------------------ -->
+	<script src="js/libs/Three.js"></script>
+	<script src="js/libs/OrbitControls.js"></script>
+	<script src="js/DialuxShader.js"></script>
 	<div id="ThreeJS" style="position: absolute; left:0px; top:0px"></div>
 
-	<script>
-		//http://stemkoski.github.io
+	<script type="module">
+		import { MaterialMaster } from './js/MaterialMaster.js';
 
 		// MAIN
-
-
-		var container, scene, camera, renderer, controls; 								// standard global variables
-
-		var sphere, parameters, gui, SphereCamera, mirrorSphereCamera, gui_store = {}; // custom global variables
-
-		var TransMap = new THREE.CubeRefractionMapping(); //SphericalRefractionMapping
-		var ReflMap = new THREE.SphericalReflectionMapping(); //CubeReflectionMapping
-
-
-		var parameters =
-		{
-			color: [255, 0, 0],
-			material: "Metallic",
-			shininess: 40,
-			trans: 0.01,
-			refl: 0.01,
-			n: 1.0,
-			Kspec_refl: 0.01,
-		};
-
+		var container, scene, camera, renderer, controls;
+		var mesh, CubeCamera;
 
 		init();
 		animate();
 
-		// FUNCTIONS 		
 		function init() {
+
+			//////////// Init scene //////////
+
+			// RENDERER
+			renderer = new THREE.WebGLRenderer({ antialias: true });
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			container = document.getElementById('ThreeJS');
+			container.appendChild(renderer.domElement);
+
 			// SCENE
 			scene = new THREE.Scene();
+
 			// CAMERA
-			var SCREEN_WIDTH = window.innerWidth, SCREEN_HEIGHT = window.innerHeight;
-			var VIEW_ANGLE = 45, ASPECT = SCREEN_WIDTH / SCREEN_HEIGHT, NEAR = 0.1, FAR = 20000;
-			camera = new THREE.PerspectiveCamera(VIEW_ANGLE, ASPECT, NEAR, FAR);
+			camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
 			scene.add(camera);
 			camera.position.set(0, 150, 400);
 			camera.lookAt(scene.position);
-			// RENDERER
-			if (Detector.webgl)
-				renderer = new THREE.WebGLRenderer({ antialias: true });
-			else
-				renderer = new THREE.CanvasRenderer();
-			renderer.setSize(SCREEN_WIDTH, SCREEN_HEIGHT);
-			container = document.getElementById('ThreeJS');
-			container.appendChild(renderer.domElement);
-			// EVENTS
-			THREEx.WindowResize(renderer, camera);
-			THREEx.FullScreen.bindKey({ charCode: 'm'.charCodeAt(0) });
+
 			// CONTROLS
 			controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+			// EVENTS
+			window.addEventListener('resize', onWindowResize);
+
+			// FLOOR
+			addFloor();
 
 			// POINT LIGHT
 			var light = new THREE.PointLight(0xffffff);
 			light.position.set(-150, 180, 200);
 			scene.add(light);
 			// AMBIENT LIGHT
-			var light2 = new THREE.AmbientLight(0x333333);  //333333   //new THREE.Color().setRGB(51, 51, 51)
+			var light2 = new THREE.AmbientLight(0x333333);
 			light2.position.set(light.position);
 			scene.add(light2);
 
 
+			////////////// CUSTOM //////////////
 
-			// FLOOR
+			//mesh
+			var geometry = new THREE.SphereGeometry(100, 50, 50);
+			var material = new DialuxMaterial();
+			mesh = new THREE.Mesh(geometry, material);
+			mesh.position.set(0, 30, 0);
+			scene.add(mesh);
+
+
+			//CubeCamera
+			CubeCamera = new THREE.CubeCamera(0.1, 1000, 1024);
+			CubeCamera.position = mesh.position;
+			scene.add(CubeCamera);
+			mesh.material.envMap = CubeCamera.renderTarget;
+			//CubeCamera.renderTarget.mapping = new THREE.SphericalRefractionMapping(); //CubeRefractionMapping
+
+
+			// Init data ---------------------------------------------------------------
+			var master = new MaterialMaster();
+			master.init(mesh.material);
+
+		}
+
+		//TOOLS
+		function addFloor() {
 			var floorTexture = new THREE.ImageUtils.loadTexture('images/checkerboard.jpg');
 			floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
 			floorTexture.repeat.set(10, 10);
@@ -101,274 +101,30 @@
 			floor.rotation.x = Math.PI / 2;
 			scene.add(floor);
 
-
-
-
-			////////////// CUSTOM //////////////
-
-
-			//Sphere
-			var sphereGeometry = new THREE.SphereGeometry(100, 50, 50);
-			var sphereMaterial = new DialuxMaterial({ color: 0xff0000 }); //MeshPhongMaterial
-			sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-			sphere.position.set(0, 30, 0);
-			scene.add(sphere);
-
-			//SphereCamera
-			SphereCamera = new THREE.CubeCamera(0.1, 1000, 1024); //0.1, 5000, 512
-			SphereCamera.renderTarget.mapping = TransMap;
-			SphereCamera.position = sphere.position;
-			scene.add(SphereCamera);
-
-			//SphereMaterial
-			sphere.material.envMap = SphereCamera.renderTarget;
-			//sphere.material.transparent = true;
-			//sphere.material.emissive.setRGB(0, 0, 0);
-			//sphere.material.specular.setRGB(1, 1, 1);
-
-
-			// GUI
-			var gui_params = { name: "Material" }
-			gui = new dat.GUI(gui_params); // class dg ac
-			gui.width = 400;
-
-			gui_store.color = gui.addColor(parameters, 'color').name('Color').listen();
-			gui_store.color.onChange(value => setColor(value));
-
-			gui_store.material = gui.add(parameters, 'material', ["Metallic", "Painted", "Transparent"]).name('Material Type').listen();
-			gui_store.material.onChange(value => setMaterialType(value));
-
-			gui_store.refl = gui.add(parameters, 'refl').min(0.00).max(1.00).step(0.01).name('Reflection factor').listen();
-			gui_store.refl.onChange(value => setRefl()); gui_store.refl.upg = true;
-
-			gui_store.Kspec_refl = gui.add(parameters, 'Kspec_refl').min(0.00).max(1.00).step(0.01).name('Reflective coating').listen();
-			gui_store.Kspec_refl.onChange(value => setKspec_refl()); gui_store.Kspec_refl.upg = true;
-
-			gui_store.trans = gui.add(parameters, 'trans').min(0.00).max(1.00).step(0.01).name('Degree of transmission').listen();
-			gui_store.trans.onChange(value => setTrans()); gui_store.trans.upg = true;
-
-			gui_store.n = gui.add(parameters, 'n').min(1.00).max(2.00).step(0.01).name('Refractive index').listen();
-			gui_store.n.onChange(value => setN(value));
-
-
-			// gui_store.material = gui.add(parameters, 'material', ["Metallic", "Painted", "Transparent"]).name('Material Type').listen();
-			// gui_store.material.onChange(function (value) { setMaterialType(value) });
-
-			gui.open();
-
-			updateSphere();
-
-
 		}
-
-
-
-		function UpdateParam() {
-			var type = gui_store.material.getValue();
-			var Refl = gui_store.refl.getValue();
-			var Kspec_refl = gui_store.Kspec_refl.getValue();
-
-			// var Yspec = Refl * Kspec_refl;
-			// var Ydiff = Refl * (1 - Kspec_refl);
-			// var Abs = 1 - Refl;
-			// console.log("spec:" + Yspec + ",diff:" + Ydiff + ",abs:" + Abs); 
-
-			var color = RGBToHSL(gui_store.color.getValue())
-
-			sphere.material.reflectivity = Kspec_refl;
-
-			var spec = { ...color };
-			var shin, trans, N;
-			if (type == "Metallic") {
-				trans = 1;
-				shin = 40;
-				N = 1;
-			}
-			else if (type == "Painted") {
-				trans = 1;
-				spec.s = 0;
-				shin = 100; // 10 + 2 * Math.pow(Refl, 1.5) * 90; //Yspec
-				N = 1;
-			} else if (type == "Transparent") {
-				shin = 40; //15
-				trans = gui_store.trans.getValue();
-				N = gui_store.n.getValue();
-			}
-
-			sphere.material.color.setHSL(color.h, color.s, Refl);
-			sphere.material.specular.setHSL(spec.h, spec.s, Refl);
-			//sphere.material.ambient.setHSL(color.h, color.s, Refl);//Refl
-
-			sphere.material.shininess = shin;
-			sphere.material.transmission = trans;
-			sphere.material.refractionRatio = 1 / N;
-
-		}
-
-		// SET
-
-		function setMaterialType(type) {
-			if (type == "Metallic") {
-				elem_vis(gui_store.Kspec_refl, true);
-				elem_vis(gui_store.trans, false);
-				elem_vis(gui_store.n, false);
-			}
-			else if (type == "Painted") {
-				elem_vis(gui_store.Kspec_refl, true);
-				elem_vis(gui_store.trans, false);
-				elem_vis(gui_store.n, false);
-			}
-			else if (type == "Transparent") {
-				elem_vis(gui_store.Kspec_refl, false);
-				elem_vis(gui_store.trans, true);
-				elem_vis(gui_store.n, true);
-			}
-			UpdateParam();
-		}
-
-
-
-
-		function setColor(v) {
-			var type = gui_store.material.getValue();
-			if (type == "Metallic") {
-				sphere.material.color.setRGB(v[0] / 255, v[1] / 255, v[2] / 255);
-				sphere.material.ambient.setRGB(v[0] / 255, v[1] / 255, v[2] / 255);
-			} else if (type == "Painted") {
-				sphere.material.color.setRGB(v[0] / 255, v[1] / 255, v[2] / 255);
-				sphere.material.ambient.setRGB(v[0] / 255, v[1] / 255, v[2] / 255);
-			} else if (type == "Transparent") {
-				sphere.material.color.setRGB(v[0] / 255, v[1] / 255, v[2] / 255);
-				sphere.material.ambient.setRGB(v[0] / 255, v[1] / 255, v[2] / 255);
-			}
-
-		}
-
-
-
-
-		function setRefl() {
-			var Refl = gui_store.refl
-
-			if (!Refl.upg) {
-				Refl.upg = true;
-				return;
-			}
-
-			Refl = Refl.getValue();
-
-			var Kspec_refl = gui_store.Kspec_refl.getValue();
-			var Trans = gui_store.trans.getValue();
-			var type = gui_store.material.getValue();
-
-			if (type == "Painted" && Refl == 0) {
-				gui_store.Kspec_refl.upg = false;
-				gui_store.Kspec_refl.setValue(0);
-			}
-			else if (type == "Transparent") {
-				if (Refl > (1 - Trans)) {
-					gui_store.trans.upg = false;
-					gui_store.trans.setValue(1 - Refl);
-				}
-			}
-
-			UpdateParam();
-
-		}
-
-		function setKspec_refl() {
-			var Kspec_refl = gui_store.Kspec_refl;
-			if (!Kspec_refl.upg) {
-				Kspec_refl.upg = true;
-				return;
-			}
-
-			Kspec_refl = Kspec_refl.getValue();
-
-			UpdateParam();
-		}
-
-		function setTrans() {
-
-			var Trans = gui_store.trans;
-			if (!Trans.upg) {
-				Trans.upg = true;
-				return;
-			}
-
-			Trans = Trans.getValue();
-
-			if (Trans > (1 - gui_store.refl.getValue())) {
-				gui_store.refl.upg = false;
-				gui_store.refl.setValue(1 - Trans);
-
-			}
-			UpdateParam();
-			//sphere.material.opacity = (1 - Trans);
-		}
-
-		function setN(N) {
-			UpdateParam();
-			//sphere.material.refractionRatio = (1 / N);
-		}
-
-
-		//URL
-
-		function getParamsFromUrl() {
-			const queryString = window.location.search;
-			if (queryString != "") {
-				var url_prms = new URLSearchParams(queryString).get('params');
-
-				url_prms = JSON.parse(url_prms); //'{"D":[0,0,0],"S":[109,143,69],"T":[109,143,69],"Sh":40}'
-
-				diff_color = diff_color.setRGB(url_prms.D[0] / 255, url_prms.D[1] / 255, url_prms.D[2] / 255);
-				spec_color = spec_color.setRGB(url_prms.S[0] / 255, url_prms.S[1] / 255, url_prms.S[2] / 255);
-
-				opc = url_prms.T; //(url_prms.T[0] + url_prms.T[1] + url_prms.T[2]) / 255;
-
-				Sh = url_prms.Sh;
-			}
-		}
-
-
-
-
-		//UPDATE
-		function updateSphere() {
-			setColor(parameters.color);
-			setRefl(parameters.refl);
-			setTrans(parameters.trans);
-			setN(parameters.n);
-			setKspec_refl(parameters.Kspec_refl)
-
-			setMaterialType(parameters.material);
-
-		}
-
 
 		//RENDER
 		function animate() {
 			requestAnimationFrame(animate);
 			render();
-			update();
-		}
-
-		function update() {
 			controls.update();
 		}
 
 		function render() {
-
-
-			sphere.visible = false;
-			SphereCamera.updateCubeMap(renderer, scene);
-			sphere.visible = true;
-
+			CubeCamera.updateCubeMap(renderer, scene); //update
 			renderer.render(scene, camera);
 		}
 
+		function onWindowResize() {
+			renderer.setSize(window.innerWidth, window.innerHeight);
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+
+		}
+
+
 	</script>
+
 
 </body>
 
