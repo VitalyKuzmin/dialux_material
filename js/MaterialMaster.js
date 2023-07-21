@@ -203,7 +203,7 @@ class MaterialMaster {
         Props.Type = gui.add(def_props, 'Type', ["Metallic", "Painted", "Transparent"]).name('Material Type').listen();
         Props.Type.onChange(value => this.setType());
 
-        Props.Refl = gui.add(def_props, 'Refl').min(0.00).max(0.9).step(0.01).name('Reflection factor').listen();
+        Props.Refl = gui.add(def_props, 'Refl').min(0.00).max(0.09).step(0.01).name('Reflection factor').listen();
         Props.Refl.onChange(value => this.setRefl());
 
         Props.Kspec_refl = gui.add(def_props, 'Kspec_refl').min(0.00).max(1.00).step(0.01).name('Reflective coating').listen();
