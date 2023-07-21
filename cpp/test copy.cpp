@@ -162,47 +162,47 @@ public:
     string Name;
 
     // Brightness
-    RGB Yd; // Diffuse      [0,1]
-    RGB Ys; // Specular     [0,1]
-    RGB Yt; // Transparency [0,1]
+    RGB *Yd; // Diffuse      [0,1]
+    RGB *Ys; // Specular     [0,1]
+    RGB *Yt; // Transparency [0,1]
 
     // Phong Params ------------------------------------------------------------------
-    const sRGB Ya = sRGB(); // Ambient rgb       [0,255]  - всегда (0,0,0)
-    sRGB Drgb;              // Diffuse rgb       [0,255]
-    sRGB Srgb;              // Specular rgb      [0,255]
-    sRGB Trgb;              // Transparency rgb  [0,255]
+    const sRGB *Ya = new sRGB(); // Ambient rgb       [0,255]  - всегда (0,0,0)
+    sRGB *Drgb;                  // Diffuse rgb       [0,255]
+    sRGB *Srgb;                  // Specular rgb      [0,255]
+    sRGB *Trgb;                  // Transparency rgb  [0,255]
 
     unsigned int Shin; // Shininess       [0,128]
     //  -------------------------------------------------------------------------------
 
-    float calcRGB(RGB Yrgb, sRGB &sRgb)
+    float calcRGB(RGB Yrgb, sRGB *sRgb)
     {
         RGB YRGB = Yrgb;
         YRGB.r /= K_R;
         YRGB.g /= K_G;
         YRGB.b /= K_B;
 
-        sRgb.r = gammaCompression(YRGB.r);
-        sRgb.g = gammaCompression(YRGB.g);
-        sRgb.b = gammaCompression(YRGB.b);
+        sRgb->r = gammaCompression(YRGB.r);
+        sRgb->g = gammaCompression(YRGB.g);
+        sRgb->b = gammaCompression(YRGB.b);
     }
 
     // Calc
     float calc()
     {
-        calcRGB(Yd, Drgb); // Diffuse
-        calcRGB(Ys, Srgb); // Specular
-        calcRGB(Yt, Trgb); // Transparency
+        calcRGB(*Yd, Drgb); // Diffuse
+        calcRGB(*Ys, Srgb); // Specular
+        calcRGB(*Yt, Trgb); // Transparency
     }
 
-    string YtoStr(sRGB &Yrgb)
+    string YtoStr(sRGB *Yrgb)
     {
-        return "[" + to_string(Yrgb.r) + "," + to_string(Yrgb.g) + "," + to_string(Yrgb.b) + "]";
+        return "[" + to_string(Yrgb->r) + "," + to_string(Yrgb->g) + "," + to_string(Yrgb->b) + "]";
     }
 
-    string YtoStr(RGB &Yrgb)
+    string YtoStr(RGB *Yrgb)
     {
-        return "[" + to_string(Yrgb.r) + "," + to_string(Yrgb.g) + "," + to_string(Yrgb.b) + "]";
+        return "[" + to_string(Yrgb->r) + "," + to_string(Yrgb->g) + "," + to_string(Yrgb->b) + "]";
     }
 
     void render()
@@ -211,7 +211,7 @@ public:
         string url = "start http://l-i-n.ru/apps/Phong/index.html?params={";
         url += "%22D%22:" + YtoStr(Drgb) + ","; // string("&");
         url += "%22S%22:" + YtoStr(Srgb) + ",";
-        url += "%22T%22:" + to_string(Yt.sum()) + ",";
+        url += "%22T%22:" + to_string(Yt->sum()) + ",";
         url += "%22Sh%22:" + to_string(Shin);
         url += "}";
 
@@ -220,18 +220,18 @@ public:
 
     Material()
     {
-        Yd = RGB();
-        Ys = RGB();
-        Yt = RGB();
+        Yd = new RGB();
+        Ys = new RGB();
+        Yt = new RGB();
 
-        Drgb = sRGB();
-        Srgb = sRGB();
-        Trgb = sRGB();
+        Drgb = new sRGB();
+        Srgb = new sRGB();
+        Trgb = new sRGB();
 
         Shin = 0;
     }
 
-    Material(RGB &yd, RGB &ys, RGB &yt, unsigned int shin, string name = "")
+    Material(RGB *yd, RGB *ys, RGB *yt, unsigned int shin, string name = "")
     {
         Yd = yd;
         Ys = ys;
@@ -249,23 +249,23 @@ public:
             cout << Name << ":\n";
 
         cout << "diff:";
-        Yd.show();
+        Yd->show();
         cout << ", ";
 
         cout << "spec:";
-        Ys.show();
+        Ys->show();
         cout << ", ";
 
         cout << "trans:";
-        Yt.show();
+        Yt->show();
         cout << ", ";
         cout << "shin:" << Shin;
     }
 
-    // Material &clone(string name)
-    // {
-    //     return Material(Yd.clone(), Ys.clone(), Yt.clone(), Shin, name);
-    // }
+    Material *clone(string name)
+    {
+        return new Material(Yd->clone(), Ys->clone(), Yt->clone(), Shin, name);
+    }
 };
 
 class MaterialProperties
