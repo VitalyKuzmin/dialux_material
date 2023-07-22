@@ -291,7 +291,6 @@ class MaterialMaster {
         if (Kspec_refl !== undefined) {
             Props.Kspec_refl.upd = false;
             Props.Kspec_refl.setValue(Kspec_refl);
-            //this.update(2);
             return
         }
 
@@ -315,7 +314,6 @@ class MaterialMaster {
         else {
             Props.Trans.upd = false;
             Props.Trans.setValue(Trans);
-            //this.update(2);
             return
         }
 

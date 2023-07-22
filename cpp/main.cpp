@@ -231,6 +231,7 @@ public:
         this->diff = RGB(mat.diff);
         this->spec = RGB(mat.spec);
         this->amb = RGB(mat.amb);
+
         this->Tr = mat.Tr;
         this->Shin = mat.Shin;
         this->N = mat.N;
@@ -360,7 +361,7 @@ public:
         {
             throw invalid_argument("Invalid material type for this args");
         }
-        update(1);
+        update(2);
     }
 
     void SetProps(Type type, const float &r, const float &t, const float &N)
@@ -376,7 +377,7 @@ public:
         {
             throw invalid_argument("Invalid material type for this args");
         }
-        update(1);
+        update(2);
     }
 
     void setType(MaterialMaster::Type newType)
@@ -387,7 +388,7 @@ public:
         update(1);
     }
 
-    void setColor(const unsigned int &R, const unsigned int &G, const unsigned int &B)
+    void setColor(const float &R, const float &G, const float &B)
     {
         mColor.Set(R / 255, G / 255, B / 255);
         mKoeff = -1;
@@ -418,7 +419,6 @@ public:
             if (mRefl > (1 - mTrans))
                 mTrans = 1 - mRefl;
         }
-        return;
 
         update(2);
     }
@@ -739,27 +739,44 @@ public:
 
 int main()
 {
-
     cout << std::fixed << std::setprecision(2);
 
     MaterialMaster master;
-    // master.init(137, 178, 88, MaterialMaster::Type::Transparent, 0.21, 0.13, 1);
     master.init(137, 178, 88, MaterialMaster::Type::Metallic, 0.21, 0.13);
     master.show();
 
     Materials materials;
-
+    // 0
     materials.add(master.createMaterial("Init material"));
 
-    // "1. Change type: Painted"
-    master.setType(MaterialMaster::Type::Painted);
-    materials.add(master.createMaterial("Painted material"));
+    // 1
+    master.setKspec_refl(0.2);
+    materials.add(master.createMaterial("Change Kspec_refl to 0.2"));
 
-    // 2. Change type: Transparent"
+    // 2
     master.setType(MaterialMaster::Type::Transparent);
-    materials.add(master.createMaterial("Transparent material"));
+    materials.add(master.createMaterial("Change type to Transparent"));
+
+    // 3
+    master.setTrans(0.5);
+    materials.add(master.createMaterial("Change Trans to 0.5"));
+
+    // 4
+    master.setN(1.3);
+    materials.add(master.createMaterial("Change N to 1.3"));
+
+    // 5
+    master.setColor(50, 50, 50);
+    materials.add(master.createMaterial("Change color to (50,50,50)"));
+
+    // 6
+    master.setRefl(0.9);
+    materials.add(master.createMaterial("Change Refl to 0.9"));
+
+    // 7
+    master.setType(MaterialMaster::Type::Painted);
+    materials.add(master.createMaterial("Change type to Painted"));
 
     materials.show();
-
     master.show_web();
 }
