@@ -760,4 +760,6 @@ int main()
     materials.add(master.createMaterial("Transparent material"));
 
     materials.show();
+
+    master.show_web();
 }

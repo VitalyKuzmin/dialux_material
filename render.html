@@ -105,8 +105,8 @@
 				diff: [0.5, 0.3, 0.3],
 				spec: [0.5, 0.5, 0.5],
 				amb: [0.2, 0.1, 0.1],
-				Shin: 40,
 				opacity: 0.2,
+				Shin: 40,
 				N: 1.02,
 			};
 
@@ -138,6 +138,17 @@
 
 
 
+		}
+
+
+		function SetMaterial(diff, spec, amb, opacity, Shin, N) {
+			material.color.setRGB(diff[0], diff[1], diff[2]);      // диффузная часть
+			material.specular.setRGB(spec[0], spec[1], spec[2]);   // зеркальный блик 
+			material.ambient.setRGB(amb[0], amb[1], amb[2]);       // окружение (зеркальный + прозрачный) 
+
+			material.opacity = opacity;           // отношение между 0 - зеркальный, 1 - прозрачный
+			material.Shin = Shin;                 // блеск (размер зеркального блика)
+			material.refractionRatio = N;     // коэфиент преломления прозрачной части
 		}
 
 		//URL ----------------------------------------------------------------
