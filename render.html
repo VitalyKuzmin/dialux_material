@@ -97,6 +97,9 @@
 			// Init data ---------------------------------------------------------------
 			var gui = new GUI();
 
+
+
+
 			var prm =
 			{
 				diff: [0.5, 0.3, 0.3],
@@ -107,16 +110,19 @@
 				N: 1.02,
 			};
 
+			initMaterialFromUrl(prm);
+
+
 			var elem;
 			// Colors
 			elem = gui.addColor(prm, 'diff').name('Diffuse').listen();
-			elem.onChange(value => set_color(material.color, value));
+			elem.onChange(c => material.setRGB(c[0], c[1], c[2]));
 
 			elem = gui.addColor(prm, 'spec').name('Specular').listen();
-			elem.onChange(value => set_color(material.specular, value));
+			elem.onChange(c => material.setRGB(c[0], c[1], c[2]));
 
 			elem = gui.addColor(prm, 'amb').name('Ambient').listen();
-			elem.onChange(value => set_color(material.ambient, value));
+			elem.onChange(c => material.setRGB(c[0], c[1], c[2]));
 
 			// Params
 			elem = gui.add(prm, 'Shin').min(0).max(128).step(1).name('Shininess').listen();
@@ -130,37 +136,25 @@
 
 			SetMaterial(prm.diff, prm.spec, prm.amb, prm.opacity, prm.Shin, prm.N);
 
-			initMaterialFromUrl();
+
 
 		}
-
-
-		// Tools ----------------------------------------------------------------
-
-		function set_color(color, c) {
-			color.setRGB(c[0], c[1], c[2])
-		}
-
-		function SetMaterial(diff, spec, amb, opacity, Shin, N) {
-			material.color.setRGB(diff[0], diff[1], diff[2]);      // диффузная часть
-			material.specular.setRGB(spec[0], spec[1], spec[2]);   // зеркальный блик 
-			material.ambient.setRGB(amb[0], amb[1], amb[2]);       // окружение (зеркальный + прозрачный) 
-
-			material.opacity = opacity;           // отношение между 0 - зеркальный, 1 - прозрачный
-			material.Shin = Shin;                 // блеск (размер зеркального блика)
-			material.refractionRatio = N;     // коэфиент преломления прозрачной части
-		}
-
 
 		//URL ----------------------------------------------------------------
-		function initMaterialFromUrl() {
+		function initMaterialFromUrl(p) {
 			const queryString = window.location.search;
 			if (queryString != "") {
-				//var prms = '{"D":[0,0,0],"S":[0.1,0.2,0.3],"A":[0.1,0.2,0.3],"Tr":0.3,"Sh":40,"n":1.5}'
+				//var prms = '{"D":[0.000000,0.000000,0.000000],"S":[0.537255,0.698039,0.345098],"A":[0.537255,0.698039,0.345098],"Sh":40,"N":1.000000}';
 				var prms = new URLSearchParams(queryString).get('params');
 				prms = JSON.parse(prms);
-				SetMaterial(prms.D, prms.S, prms.A, prms.Tr, prms.Shin, prms.n);
 
+				p.diff = prms.D;	 // диффузная часть
+				p.spec = prms.S;	 // зеркальный блик 
+				p.amb = prms.A;		 // окружение (зеркальный + прозрачный) 
+				p.opacity = prms.Tr; // отношение между 0 - зеркальный, 1 - прозрачный
+
+				p.Shin = prms.Shin;	 // блеск (размер зеркального блика)	
+				p.N = prms.N;		 // коэфиент преломления прозрачной части
 			}
 		}
 

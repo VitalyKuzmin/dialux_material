@@ -216,154 +216,6 @@ class MaterialMaster {
         Props.n.onChange(value => this.setN());
     }
 
-    render() {
-        var Props = this.Props;
-        var type = Props.Type.getValue();
-        var Kspec_refl = Props.Kspec_refl.getValue();
-        var Refl = Props.Refl.getValue();
-        var Trans = Props.Trans.getValue();
-
-        var color = Props.Color.getValue();
-
-        var diff, spec, amb;
-        var Shin, N, opacity;
-        if (type == "Metallic") {
-
-            var Ys = Refl * Kspec_refl;
-            var Yd = Refl * (1 - Kspec_refl);
-            diff = changeLuminance(color, Yd);
-            spec = changeLuminance(color, Ys);
-            amb = spec;
-
-            opacity = 0;
-            Shin = 40; // примерно
-            N = 1;
-        }
-        else if (type == "Painted") {
-
-            var Ys = Refl * Kspec_refl;
-            var Yd = Refl * (1 - Ys);
-            diff = changeLuminance(color, Yd);
-            spec = changeLuminance([0, 0, 0], Ys); // grayscale
-            amb = spec;
-
-            opacity = 0;
-            Shin = 80; // примерно   (10 + 2 * Math.pow(Refl, 1.5) * 90);
-            N = 1;
-
-        }
-        else if (type == "Transparent") {
-            var Y = Refl + Trans;
-            diff = [0, 0, 0];
-            spec = changeLuminance(color, Refl); // grayscale
-            amb = changeLuminance(color, Y); // grayscale
-
-            opacity = Trans / Y;
-            Shin = 40; // примерно
-            N = Props.n.getValue();
-        }
-
-
-        this.SetMaterial(diff, spec, amb, opacity, Shin, N);
-    }
-
-    // GetY ----------------------------------------------------------------
-    getYfromRgb() {
-        var color = this.Props.Color.getValue();//this.Color;
-        // sRGB to Y
-        var Yrgb = [0, 0, 0];
-        Yrgb[0] = toLinear(color[0]);
-        Yrgb[1] = toLinear(color[1]);
-        Yrgb[2] = toLinear(color[2]);
-
-        return 0.9 * (Yrgb[0] * K_R + Yrgb[1] * K_G + Yrgb[2] * K_B); // 10% идет на поглощение
-    }
-
-    getYfromProps() {
-        var Props = this.Props;
-        var type = Props.Type.getValue();
-        var Refl = Props.Refl.getValue();
-        var Trans = Props.Trans.getValue();
-        var Kspec_refl = Props.Kspec_refl.getValue();
-        var Y;
-        switch (type) {
-            case "Metallic":
-                Y = Refl;
-                break;
-            case "Painted":
-                var K = Kspec_refl == 1 ? 0 : Kspec_refl * Refl;
-                Y = (Refl - K) / (1 - K);
-                // Y = Refl;
-                break;
-            case "Transparent":
-                var K = Trans / Refl;
-                Y = Refl * (1 + K);
-                //Y = Refl + Trans;
-                break;
-        }
-        return Y;
-    }
-
-    //Update ----------------------------------------------------------------
-    updateRGB() {
-        var Y = this.getYfromProps();
-        var color = changeLuminance(this.Color, Y);
-        this.setColor(color);
-    }
-
-    updateProps() {
-        var Props = this.Props;
-        var type = Props.Type.getValue();
-        var Y = this.getYfromRgb();
-        var Refl = Props.Refl.getValue();
-        var Kspec_refl = Props.Kspec_refl.getValue();
-        var Trans = Props.Trans.getValue();
-        var K = this.Koeff;
-        switch (type) {
-            case "Metallic":
-                if (K !== undefined)
-                    this.setKspec_refl(K);
-                this.setRefl(Y);
-                break;
-            case "Painted":
-                if (K === undefined)
-                    K = Kspec_refl * Refl
-
-                Refl = K + (1 - K) * Y;
-                Kspec_refl = Refl ? K / Refl : 0;
-
-                if (K != undefined && Refl > 0.9)
-                    Refl = 0.9;
-                this.setRefl(Refl);
-                this.setKspec_refl(Kspec_refl);
-                break;
-            case "Transparent":
-                if (Refl == 0) {
-                    Trans = Y;
-                } else {
-                    if (K === undefined)
-                        K = Trans / Refl;
-                    Refl = Y / (1 + K);
-                    Trans = K * Refl;
-                }
-
-                this.setRefl(Refl);
-                this.setTrans(Trans);
-                break;
-        }
-    }
-
-    update(flag = 0) {
-        if (flag == 1)
-            this.updateProps();
-        else if (flag == 2)
-            this.updateRGB();
-
-        this.render();
-    }
-
-
-
     // SET ----------------------------------------------------------------
     setType() {
         var Props = this.Props;
@@ -384,10 +236,8 @@ class MaterialMaster {
             elem_vis(Props.n, true);
         }
         this.Type = type;
-        this.updateProps();
-        this.render();
+        this.update(1);
     }
-
 
     setColor(Color) {
         var Props = this.Props;
@@ -482,7 +332,6 @@ class MaterialMaster {
         this.update();
     }
 
-
     SetMaterial(diff, spec, amb, opacity, Shin, N) {
         this.material.color.setRGB(diff[0], diff[1], diff[2]);      // диффузная часть
         this.material.specular.setRGB(spec[0], spec[1], spec[2]);   // зеркальный блик 
@@ -492,6 +341,158 @@ class MaterialMaster {
         this.material.Shin = Shin;                 // блеск (размер зеркального блика)
         this.material.refractionRatio = N;     // коэфиент преломления прозрачной части
     }
+
+    // GetY ----------------------------------------------------------------
+    getYfromRgb() {
+        var color = this.Props.Color.getValue();//this.Color;
+        // sRGB to Y
+        var Yrgb = [0, 0, 0];
+        Yrgb[0] = toLinear(color[0]);
+        Yrgb[1] = toLinear(color[1]);
+        Yrgb[2] = toLinear(color[2]);
+
+        return 0.9 * (Yrgb[0] * K_R + Yrgb[1] * K_G + Yrgb[2] * K_B); // 10% идет на поглощение
+    }
+
+    getYfromProps() {
+        var Props = this.Props;
+        var type = Props.Type.getValue();
+        var Refl = Props.Refl.getValue();
+        var Trans = Props.Trans.getValue();
+        var Kspec_refl = Props.Kspec_refl.getValue();
+        var Y;
+        switch (type) {
+            case "Metallic":
+                Y = Refl;
+                break;
+            case "Painted":
+                var K = Kspec_refl == 1 ? 0 : Kspec_refl * Refl;
+                Y = (Refl - K) / (1 - K);
+                break;
+            case "Transparent":
+                if (Refl == 0) {
+                    Y = Trans;
+                } else {
+                    var K = Trans / Refl;
+                    Y = Refl * (1 + K);
+                }
+                break;
+        }
+        return Y;
+    }
+
+    //Update ----------------------------------------------------------------
+
+    updateRGB() {
+        var Y = this.getYfromProps();
+        var color = changeLuminance(this.Color, Y);
+        this.setColor(color);
+    }
+
+    updateProps() {
+        var Props = this.Props;
+        var type = Props.Type.getValue();
+        var Y = this.getYfromRgb();
+        var Refl = Props.Refl.getValue();
+        var Kspec_refl = Props.Kspec_refl.getValue();
+        var Trans = Props.Trans.getValue();
+        var K = this.Koeff;
+        switch (type) {
+            case "Metallic":
+                if (K !== undefined)
+                    this.setKspec_refl(K);
+                this.setRefl(Y);
+                break;
+            case "Painted":
+                if (K === undefined)
+                    K = Kspec_refl * Refl
+
+                Refl = K + (1 - K) * Y;
+                Kspec_refl = Refl ? K / Refl : 0;
+
+                if (this.Koeff != undefined && Refl > 0.9)
+                    Refl = 0.9;
+                this.setRefl(Refl);
+                this.setKspec_refl(Kspec_refl);
+                break;
+            case "Transparent":
+                if (Refl == 0) {
+                    Trans = Y;
+                } else {
+                    if (K === undefined)
+                        K = Trans / Refl;
+                    Refl = Y / (1 + K);
+                    Trans = K * Refl;
+                }
+
+                this.setRefl(Refl);
+                this.setTrans(Trans);
+                break;
+        }
+    }
+
+    update(flag = 0) {
+        if (flag == 1)
+            this.updateProps();
+        else if (flag == 2)
+            this.updateRGB();
+
+        this.render();
+    }
+
+    // Render
+
+    render() {
+        var Props = this.Props;
+        var type = Props.Type.getValue();
+        var Kspec_refl = Props.Kspec_refl.getValue();
+        var Refl = Props.Refl.getValue();
+        var Trans = Props.Trans.getValue();
+
+        var color = Props.Color.getValue();
+
+        var diff, spec, amb;
+        var Shin, N, opacity;
+        if (type == "Metallic") {
+
+            var Ys = Refl * Kspec_refl;
+            var Yd = Refl * (1 - Kspec_refl);
+            diff = changeLuminance(color, Yd);
+            spec = changeLuminance(color, Ys);
+            amb = spec;
+
+            opacity = 0;
+            Shin = 40; // примерно
+            N = 1;
+        }
+        else if (type == "Painted") {
+
+            var Ys = Refl * Kspec_refl;
+            var Yd = Refl * (1 - Ys);
+            diff = changeLuminance(color, Yd);
+            spec = changeLuminance([0, 0, 0], Ys); // grayscale
+            amb = spec;
+
+            opacity = 0;
+            Shin = 80; // примерно   (10 + 2 * Math.pow(Refl, 1.5) * 90);
+            N = 1;
+
+        }
+        else if (type == "Transparent") {
+            var Y = Refl + Trans;
+            diff = [0, 0, 0];
+            spec = changeLuminance(color, Refl);
+            amb = changeLuminance(color, Y);
+
+            opacity = Trans / Y;
+            Shin = 40; // примерно
+            N = Props.n.getValue();
+        }
+
+
+        this.SetMaterial(diff, spec, amb, opacity, Shin, N);
+    }
+
 
 
 }
