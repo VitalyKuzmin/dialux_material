@@ -262,6 +262,7 @@ var DialuxShader = {
 
 
 		//	Envmap mix ----------------------------------------------------
+		// Смешивается карта отражения и карта пропускания с соотношением в зависимости от параметра opacity:
 		"vec4 reflectedColor = textureCube( envMap, vec3( - vReflect.x, vReflect.yz ) );",
 		"vec4 refractedColor = textureCube( envMap, vec3(  - vRefract.x, vRefract.yz ) );",
 		"vec4 cubeColor = mix( reflectedColor, refractedColor , clamp( opacity, 0.0, 1.0 ) );",
@@ -336,7 +337,7 @@ var DialuxShader = {
 		"float spotDiffuseWeight = max( dotProduct, 0.0 );",
 		"spotDiffuse += diffuse * spotLightColor[ i ] * spotDiffuseWeight * lDistance * spotEffect;",
 
-		// specular
+		// specular 
 
 		"vec3 spotHalfVector = normalize( lVector + viewPosition );",
 		"float spotDotNormalHalf = max( dot( normal, spotHalfVector ), 0.0 );",
@@ -458,9 +459,9 @@ var DialuxShader = {
 
 		// SUM ------------------------------------------------------------------
 
-		"gl_FragColor.xyz = cubeColor.xyz * ambient.xyz;",
-		"gl_FragColor.xyz += totalDiffuse.xyz ;",
-		"gl_FragColor.xyz += totalSpecular.xyz ;",
+		"gl_FragColor.xyz = cubeColor.xyz * ambient.xyz;", //Добавляется составляющая окружения (зеркальная или прозрачная)
+		"gl_FragColor.xyz += totalDiffuse.xyz ;",		 // Добавляется  диффузная составляющая	
+		"gl_FragColor.xyz += totalSpecular.xyz ;",		// Добавляется  блик	
 
 		"}"
 
