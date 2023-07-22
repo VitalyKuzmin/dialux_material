@@ -155,7 +155,7 @@
 		function initMaterialFromUrl(p) {
 			const queryString = window.location.search;
 			if (queryString != "") {
-				//var prms = '{"D":[0.000000,0.000000,0.000000],"S":[0.537255,0.698039,0.345098],"A":[0.537255,0.698039,0.345098],"Sh":40,"N":1.000000}';
+				//var prms = '{"D":[0.000000,0.000000,0.000000],"S":[0.511817,0.511817,0.665696],"A":[0.511817,0.511817,0.665696],"Tr":0.000000,"Sh":40,"N":1.000000}';
 				var prms = new URLSearchParams(queryString).get('params');
 				prms = JSON.parse(prms);
 
@@ -164,7 +164,7 @@
 				p.amb = prms.A;		 // окружение (зеркальный + прозрачный) 
 				p.opacity = prms.Tr; // отношение между 0 - зеркальный, 1 - прозрачный
 
-				p.Shin = prms.Shin;	 // блеск (размер зеркального блика)	
+				p.Shin = prms.Sh;	 // блеск (размер зеркального блика)	
 				p.N = prms.N;		 // коэфиент преломления прозрачной части
 			}
 		}
