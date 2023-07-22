@@ -204,7 +204,7 @@ void changeLuminance(RGB &rgb, const float &Ynew)
     rgb.b = fromLinear(color[1]);
 };
 
-// classes ---------------------------------------------------------------------
+// Classes ---------------------------------------------------------------------
 
 class Material
 {
