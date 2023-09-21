@@ -55,13 +55,36 @@ public:
     {
         return r + g + b;
     }
-
     float max()
     {
         float max = r;
         max = (g > max) ? g : max;
         max = (b > max) ? b : max;
         return max;
+    }
+
+    // Overloading * operator
+    RGB operator*(const float &scalar)
+    {
+        return RGB(r * scalar, g * scalar, b * scalar);
+    }
+
+    // Overloading rgb*rgb operator
+    RGB operator*(const RGB &rgb)
+    {
+        return RGB(r * rgb.r, g * rgb.g, b * rgb.b);
+    }
+
+    // Overloading rgb*rgb operator
+    RGB operator+(const RGB &rgb)
+    {
+        return RGB(r + rgb.r, g + rgb.g, b + rgb.b);
+    }
+
+    // Overloading /= operator
+    RGB &operator/=(const float &scalar)
+    {
+        return RGB(r / scalar, g / scalar, b / scalar);
     }
 
     RGB getNorm()
@@ -72,11 +95,6 @@ public:
 };
 
 // Tools ------------------------------------------------------------------------------------
-
-// Constants RGB -> Y (https://en.wikipedia.org/wiki/Relative_luminance)
-const float K_R = 0.2126;
-const float K_G = 0.7152;
-const float K_B = 0.0722;
 
 // sRGB <-> lRGB (https://mina86.com/2019/srgb-xyz-conversion)
 float toLinear(float value)
@@ -105,6 +123,25 @@ float fromLinear(float value)
     return value;
 };
 
+void RGBtoLinear(RGB &rgb)
+{
+    rgb.r = toLinear(rgb.r);
+    rgb.g = toLinear(rgb.g);
+    rgb.b = toLinear(rgb.b);
+}
+
+void RGBfromLinear(RGB &rgb)
+{
+    rgb.r = fromLinear(rgb.r);
+    rgb.g = fromLinear(rgb.g);
+    rgb.b = fromLinear(rgb.b);
+}
+
+// Constants RGB -> Y (https://en.wikipedia.org/wiki/Relative_luminance)
+const float K_R = 0.2126;
+const float K_G = 0.7152;
+const float K_B = 0.0722;
+
 // Change rgb by Luminance
 unsigned int rgb_max_i(float arr[], unsigned int no_index = -1)
 {
@@ -123,6 +160,66 @@ unsigned int rgb_max_i(float arr[], unsigned int no_index = -1)
     }
     return index;
 };
+
+// normalizeLuminance(float &color[])
+// {
+//     const float K[3] = {K_R, K_G, K_B};
+//     // Change Luminance ---------------------------------------------------
+//     float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
+//     float coeff; //= Ynew / sum;
+//     unsigned int index = rgb_max_i(color);
+//     // color[index] *= coeff;
+//     if (color[index] > 1)
+//     {
+//         color[index] = 1;
+//         sum = 0;
+//         for (int j = 0; j < 3; j++)
+//         {
+//             if (j == index)
+//                 continue;
+//             sum += color[j] * K[j];
+//         }
+//         coeff = (Ynew - K[index]) / sum;
+//         unsigned int index2 = rgb_max_i(color, index);
+//         color[index2] = color[index2] * coeff;
+//         if (color[index2] > 1)
+//         {
+//             color[index2] = 1;
+//             unsigned int index3;
+//             for (int j = 0; j < 3; j++)
+//             {
+//                 if (j == index || j == index2)
+//                     continue;
+//                 sum += color[j] * K[j];
+//                 index3 = j;
+//             }
+//             coeff = (Ynew - K[index] - K[index2]) / sum;
+
+//             color[index3] *= coeff;
+
+//             if (color[index3] > 1)
+//                 color[index3] = 1;
+//         }
+//         else
+//         {
+//             for (int j = 0; j < 3; j++)
+//             {
+//                 if (j == index || j == index2)
+//                     continue;
+//                 color[j] *= coeff;
+//             }
+//         }
+//     }
+//     else
+//     {
+//         for (int j = 0; j < 3; j++)
+//         {
+//             if (j == index)
+//                 continue;
+//             color[j] *= coeff;
+//         }
+//     }
+// }
 
 void changeLuminance(RGB &rgb, const float &Ynew)
 {
@@ -203,6 +300,29 @@ void changeLuminance(RGB &rgb, const float &Ynew)
     rgb.g = fromLinear(color[0]);
     rgb.b = fromLinear(color[1]);
 };
+
+// Получить цвет пиксел из прямой и отраженной составляющей луча падающий на определенный материал
+RGB GetColor(RGB Direct, RGB Photon, float Ymax, RGB diffuse, RGB specular, RGB transmission)
+{
+    // Нормируем результаты расчета
+    Direct /= Ymax;
+    Photon /= Ymax;
+
+    // sRGB -> linearRGB
+    RGBtoLinear(diffuse);
+    RGBtoLinear(specular);
+    RGBtoLinear(transmission);
+
+    // Производим расчет
+    RGB Yrgb = Direct * specular + Photon * diffuse;
+    RGB Yrgb_trans = (Direct + Photon) * transmission; // прозрачная часть если нужна
+
+    // linearRGB -> sRGB
+    RGBfromLinear(Yrgb);
+    RGBfromLinear(Yrgb_trans); // прозрачная часть если нужна
+
+    return Yrgb;
+}
 
 // Classes ---------------------------------------------------------------------
 
