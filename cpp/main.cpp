@@ -143,12 +143,12 @@ const float K_G = 0.7152;
 const float K_B = 0.0722;
 
 // Change rgb by Luminance
-unsigned int rgb_max_i(float arr[], unsigned int no_index = -1)
+unsigned int rgb_max_i(float *arr, unsigned int no_index = -1)
 {
     float max = 0;
     unsigned int index = 0;
 
-    for (int i = 0; i < 3; i++) // arr.length
+    for (int i = 0; i < 3; i++)
     {
         if (i == no_index)
             continue;
@@ -160,66 +160,6 @@ unsigned int rgb_max_i(float arr[], unsigned int no_index = -1)
     }
     return index;
 };
-
-// normalizeLuminance(float &color[])
-// {
-//     const float K[3] = {K_R, K_G, K_B};
-//     // Change Luminance ---------------------------------------------------
-//     float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
-//     float coeff; //= Ynew / sum;
-//     unsigned int index = rgb_max_i(color);
-//     // color[index] *= coeff;
-//     if (color[index] > 1)
-//     {
-//         color[index] = 1;
-//         sum = 0;
-//         for (int j = 0; j < 3; j++)
-//         {
-//             if (j == index)
-//                 continue;
-//             sum += color[j] * K[j];
-//         }
-//         coeff = (Ynew - K[index]) / sum;
-//         unsigned int index2 = rgb_max_i(color, index);
-//         color[index2] = color[index2] * coeff;
-//         if (color[index2] > 1)
-//         {
-//             color[index2] = 1;
-//             unsigned int index3;
-//             for (int j = 0; j < 3; j++)
-//             {
-//                 if (j == index || j == index2)
-//                     continue;
-//                 sum += color[j] * K[j];
-//                 index3 = j;
-//             }
-//             coeff = (Ynew - K[index] - K[index2]) / sum;
-
-//             color[index3] *= coeff;
-
-//             if (color[index3] > 1)
-//                 color[index3] = 1;
-//         }
-//         else
-//         {
-//             for (int j = 0; j < 3; j++)
-//             {
-//                 if (j == index || j == index2)
-//                     continue;
-//                 color[j] *= coeff;
-//             }
-//         }
-//     }
-//     else
-//     {
-//         for (int j = 0; j < 3; j++)
-//         {
-//             if (j == index)
-//                 continue;
-//             color[j] *= coeff;
-//         }
-//     }
-// }
 
 void changeLuminance(RGB &rgb, const float &Ynew)
 {
@@ -301,7 +241,67 @@ void changeLuminance(RGB &rgb, const float &Ynew)
     rgb.b = fromLinear(color[1]);
 };
 
-// Получить цвет пиксел из прямой и отраженной составляющей луча падающий на определенный материал
+void changeLuminance2(float *color, float Ynew)
+{
+    const float K[3] = {K_R, K_G, K_B};
+    // Change Luminance ---------------------------------------------------
+    float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
+    float coeff; //= Ynew / sum;
+    unsigned int index = rgb_max_i(color);
+    // color[index] *= coeff;
+    if (color[index] > 1)
+    {
+        color[index] = 1;
+        sum = 0;
+        for (int j = 0; j < 3; j++)
+        {
+            if (j == index)
+                continue;
+            sum += color[j] * K[j];
+        }
+        coeff = (Ynew - K[index]) / sum;
+        unsigned int index2 = rgb_max_i(color, index);
+        color[index2] = color[index2] * coeff;
+        if (color[index2] > 1)
+        {
+            color[index2] = 1;
+            unsigned int index3;
+            for (int j = 0; j < 3; j++)
+            {
+                if (j == index || j == index2)
+                    continue;
+                sum += color[j] * K[j];
+                index3 = j;
+            }
+            coeff = (Ynew - K[index] - K[index2]) / sum;
+
+            color[index3] *= coeff;
+
+            if (color[index3] > 1)
+                color[index3] = 1;
+        }
+        else
+        {
+            for (int j = 0; j < 3; j++)
+            {
+                if (j == index || j == index2)
+                    continue;
+                color[j] *= coeff;
+            }
+        }
+    }
+    else
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            if (j == index)
+                continue;
+            color[j] *= coeff;
+        }
+    }
+}
+
+// Получить цвет пикселя из прямой и отраженной составляющей луча падающий на определенный материал
 RGB GetColor(RGB Direct, RGB Photon, float Ymax, RGB diffuse, RGB specular, RGB transmission)
 {
     // Нормируем результаты расчета
