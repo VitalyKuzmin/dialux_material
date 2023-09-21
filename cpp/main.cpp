@@ -81,6 +81,11 @@ public:
         return RGB(r + rgb.r, g + rgb.g, b + rgb.b);
     }
 
+    bool operator==(const RGB &rgb)
+    {
+        return (r == rgb.r && g == rgb.g && b == rgb.b);
+    }
+
     // Overloading /= operator
     RGB &operator/=(const float &scalar)
     {
@@ -160,6 +165,28 @@ unsigned int rgb_max_i(float *arr, unsigned int no_index = -1)
     }
     return index;
 };
+
+void toGray(RGB &rgb)
+{
+    float color[3];
+
+    // sRGB to linear RGB --------------------------------
+    color[0] = toLinear(rgb.r);
+    color[1] = toLinear(rgb.g);
+    color[2] = toLinear(rgb.b);
+
+    const float K[3] = {K_R, K_G, K_B};
+
+    // for no division to null errors --------------------------------
+    for (int j = 0; j < 3; j++)
+    {
+        if (color[j] == 0.0)
+            color[j] = 0.000000001;
+    }
+
+    // Change Luminance ---------------------------------------------------
+    float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
+}
 
 void changeLuminance(RGB &rgb, const float &Ynew)
 {
@@ -323,6 +350,157 @@ RGB GetColor(RGB Direct, RGB Photon, float Ymax, RGB diffuse, RGB specular, RGB 
 
     return Yrgb;
 }
+
+// // Получить материал из  Phong материала
+RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d, unsigned int illum)
+{
+    // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
+    // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
+    // Ks -  Specular color      [[0,1],[0,1],[0,1]]
+    // Ke -  Emission color      [[0,1],[0,1],[0,1]]
+
+    // Ns -  Shininess           [0,128]
+    // Ni -  Refractive index    [1,2]
+
+    // d -   dissolve (1/opacity)  [0,1]
+    // illum - illumination model [0-10]
+    //  0		Color on and Ambient off      (Painted)
+    //  1		Color on and Ambient on       (Painted)
+    //  2		Highlight on
+    //  3		Reflection on and Ray trace on
+    //  4		Transparency: Glass on
+    //  		Reflection: Ray trace on
+    //  5		Reflection: Fresnel on and Ray trace on
+    //  6		Transparency: Refraction on
+    //  		Reflection: Fresnel off and Ray trace on
+    //  7		Transparency: Refraction on
+    //  		Reflection: Fresnel on and Ray trace on
+    //  8		Reflection on and Ray trace off
+    //  9		Transparency: Glass on
+    //  		Reflection: Ray trace off
+    //  10		Casts shadows onto invisible surfaces
+
+    float type = 0; // 0 - Metallic;  1 - Painted; 2 - Transparent;
+
+    if (d < 1.0) // && illum > 3
+    {
+        type = 2;
+    }
+    else if (Kd == Ks)
+    {
+        type = 1;
+    }
+
+    RGB diffuse;
+    RGB specular;
+    RGB ambient;
+    RGB emission;
+
+    float Trans;
+    float Shin;
+    float N;
+
+    emission = RGB(0, 0, 0);
+    Shin = Ns;
+    if (type == 0) // Type::Metallic
+    {
+        diffuse = RGB(Kd);
+        specular = RGB(Kd);
+        ambient = RGB(Kd);
+        Trans = 0;
+        N = 1;
+        // Shin = 40;
+    }
+    else if (type == 1) // Type::Painted
+    {
+        diffuse = RGB(Kd);
+        specular = RGB(0, 0, 0);
+        float Ynew = 100;
+        changeLuminance(specular, Ynew);
+        ambient = RGB(0, 0, 0);
+        Trans = 0;
+        N = 1;
+        // Shin = 80;
+    }
+    else if (type == 2) // Type::Transparent
+    {
+        Trans = 1 / d;
+        // Shin = 40;
+        N = Ns;
+    }
+
+    // setMaterial(diffuse, specular, ambient, Trans, Shin, N);
+
+    // if (type == 0) // Type::Metallic
+    // {
+    //     float Ys = mRefl * mKspec_refl;
+    //     float Yd = mRefl * (1 - mKspec_refl);
+    //     changeLuminance(diff, Yd);
+    //     changeLuminance(diff, Ys);
+    //     amb = spec;
+
+    //     opacity = 0;
+    //     Shin = 40; // примерно
+    //     N = 1;
+    // }
+    // else if (type == 1) // Type::Painted
+    // {
+
+    //     float Ys = mRefl * mKspec_refl;
+    //     float Yd = mRefl * (1 - Ys);
+    //     changeLuminance(diff, Yd);
+    //     spec = RGB(0, 0, 0);
+    //     changeLuminance(spec, Ys); // grayscale
+    //     amb = spec;
+
+    //     opacity = 0;
+    //     Shin = 80; // примерно
+    //     N = 1;
+    // }
+    // else if (type == 2) // Type::Transparent
+    // {
+    //     float Y = mRefl + mTrans;
+    //     diff.Set(0, 0, 0);
+    //     changeLuminance(spec, mRefl);
+    //     changeLuminance(amb, Y);
+
+    //     opacity = mTrans / Y;
+    //     Shin = 40; // примерно
+    //     N = mN;
+    // }
+
+    // case Type::Metallic:
+    //     Y = mRefl;
+    //     break;
+    // case Type::Painted:
+    //     K = mKspec_refl == 1 ? 0 : mKspec_refl * mRefl;
+    //     Y = (mRefl - K) / (1 - K);
+    //     break;
+    // case Type::Transparent:
+
+    // // Нормируем результаты расчета
+    // Direct /= Ymax;
+    // Photon /= Ymax;
+
+    // // sRGB -> linearRGB
+    // RGBtoLinear(diffuse);
+    // RGBtoLinear(specular);
+    // RGBtoLinear(transmission);
+
+    // // Производим расчет
+    // RGB Yrgb = Direct * specular + Photon * diffuse;
+    // RGB Yrgb_trans = (Direct + Photon) * transmission; // прозрачная часть если нужна
+
+    // // linearRGB -> sRGB
+    // RGBfromLinear(Yrgb);
+    // RGBfromLinear(Yrgb_trans); // прозрачная часть если нужна
+
+    // return Yrgb;
+}
+
+// RGB MaterialFromPhong(Material)
+// {
+// }
 
 // Classes ---------------------------------------------------------------------
 
