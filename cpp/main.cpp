@@ -184,8 +184,8 @@ void toGray(RGB &rgb)
             color[j] = 0.000000001;
     }
 
-    // Change Luminance ---------------------------------------------------
-    float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
+    // Calculate Luminance ---------------------------------------------------
+    float Y = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
 }
 
 void changeLuminance(RGB &rgb, const float &Ynew)
