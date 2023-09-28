@@ -86,10 +86,23 @@ public:
         return (r == rgb.r && g == rgb.g && b == rgb.b);
     }
 
+    bool operator!=(const RGB &rgb)
+    {
+        return (r != rgb.r && g != rgb.g && b != rgb.b);
+    }
+
+    bool isEmpty()
+    {
+        return (r == 0.0 && g == 0.0 && b == 0.0);
+    }
+
     // Overloading /= operator
     RGB &operator/=(const float &scalar)
     {
-        return RGB(r / scalar, g / scalar, b / scalar);
+        r /= scalar;
+        g /= scalar;
+        b /= scalar;
+        return (*this); // return RGB(r / scalar, g / scalar, b / scalar);
     }
 
     RGB getNorm()
@@ -166,26 +179,15 @@ unsigned int rgb_max_i(float *arr, unsigned int no_index = -1)
     return index;
 };
 
+float getY(const RGB &rgb)
+{
+    return K_R * toLinear(rgb.r) + K_G * toLinear(rgb.g) + K_B * toLinear(rgb.b);
+}
+
 void toGray(RGB &rgb)
 {
-    float color[3];
-
-    // sRGB to linear RGB --------------------------------
-    color[0] = toLinear(rgb.r);
-    color[1] = toLinear(rgb.g);
-    color[2] = toLinear(rgb.b);
-
-    const float K[3] = {K_R, K_G, K_B};
-
-    // for no division to null errors --------------------------------
-    for (int j = 0; j < 3; j++)
-    {
-        if (color[j] == 0.0)
-            color[j] = 0.000000001;
-    }
-
-    // Change Luminance ---------------------------------------------------
-    float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
+    float Y = fromLinear(getY(rgb));
+    rgb = RGB(Y, Y, Y);
 }
 
 void changeLuminance(RGB &rgb, const float &Ynew)
@@ -351,6 +353,22 @@ RGB GetColor(RGB Direct, RGB Photon, float Ymax, RGB diffuse, RGB specular, RGB 
     return Yrgb;
 }
 
+void NormaliseY(float &Ysum, float &Y1, float &Y2)
+{
+    if (Ysum > 1)
+    {
+        // Y1/Y2 = K
+        // Y1+Y2 = 1
+        // --------------
+        // Y2 = 1 - K*Y2
+        // Y1 = 1 - Y2
+        float K = Y1 / Y2;
+        Y2 = 1 - K * Y2;
+        Y1 = 1 - Y2;
+        Ysum = 1;
+    }
+}
+
 // // Получить материал из  Phong материала
 RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d, unsigned int illum)
 {
@@ -402,31 +420,63 @@ RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d,
 
     emission = RGB(0, 0, 0);
     Shin = Ns;
+
+    RGB color = Kd;
+    if (color.isEmpty())
+    {
+        color = Ks;
+    }
+    ambient = RGB(color);
+
     if (type == 0) // Type::Metallic
     {
-        diffuse = RGB(Kd);
-        specular = RGB(Kd);
-        ambient = RGB(Kd);
+
+        diffuse = RGB(color);
+        specular = RGB(color);
+
+        float Ys = getY(Ks);
+        float Yd = getY(Kd);
+        float Y = Ys + Yd;
+
+        NormaliseY(Y, Ys, Yd);
+        changeLuminance(specular, Ys);
+        changeLuminance(diffuse, Yd);
+
         Trans = 0;
         N = 1;
         // Shin = 40;
     }
     else if (type == 1) // Type::Painted
     {
-        diffuse = RGB(Kd);
-        specular = RGB(0, 0, 0);
-        float Ynew = 100;
-        changeLuminance(specular, Ynew);
-        ambient = RGB(0, 0, 0);
+        diffuse = RGB(color);
+        specular = RGB(0, 0, 0); // Grayscale
+
+        float Ys = getY(Ks);
+        float Yd = getY(Kd);
+        float Y = Ys + Yd;
+
+        NormaliseY(Y, Ys, Yd);
+        changeLuminance(specular, Ys);
+        changeLuminance(diffuse, Yd);
+
         Trans = 0;
         N = 1;
         // Shin = 80;
     }
     else if (type == 2) // Type::Transparent
     {
+
+        diffuse = RGB(0, 0, 0); // zero
+        specular = RGB(color);
         Trans = 1 / d;
-        // Shin = 40;
+        float Refl = getY(Ks) + getY(Kd);
+        float Y = Refl + Trans;
+
+        NormaliseY(Y, Refl, Trans);
+        changeLuminance(specular, Refl);
+        changeLuminance(ambient, Y);
         N = Ns;
+        // Shin = 40;
     }
 
     // setMaterial(diffuse, specular, ambient, Trans, Shin, N);
@@ -438,7 +488,6 @@ RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d,
     //     changeLuminance(diff, Yd);
     //     changeLuminance(diff, Ys);
     //     amb = spec;
-
     //     opacity = 0;
     //     Shin = 40; // примерно
     //     N = 1;
@@ -751,7 +800,6 @@ public:
 
     bool setTrans(float t)
     {
-
         if (mTrans == t)
             return false;
 
@@ -844,7 +892,6 @@ public:
     }
 
     // Update
-
     float updateRGB()
     {
         float Y = getYfromProps();
@@ -902,7 +949,6 @@ public:
     }
 
     // Render --------------------------------------------------------
-
     void render()
     {
         RGB diff(mColor);
@@ -955,7 +1001,6 @@ public:
     };
 
     // Show
-
     void showRGB()
     {
         cout << "sRGB: ";
@@ -1034,7 +1079,6 @@ public:
 };
 
 // Main ----------------------------------------------------------------
-
 int main()
 {
     cout << std::fixed << std::setprecision(2);
