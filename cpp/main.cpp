@@ -370,7 +370,7 @@ void NormaliseY(float &Ysum, float &Y1, float &Y2)
 }
 
 // // Получить материал из  Phong материала
-RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d, unsigned int illum)
+RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
 {
     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
@@ -381,22 +381,6 @@ RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d,
     // Ni -  Refractive index    [1,2]
 
     // d -   dissolve (1/opacity)  [0,1]
-    // illum - illumination model [0-10]
-    //  0		Color on and Ambient off      (Painted)
-    //  1		Color on and Ambient on       (Painted)
-    //  2		Highlight on
-    //  3		Reflection on and Ray trace on
-    //  4		Transparency: Glass on
-    //  		Reflection: Ray trace on
-    //  5		Reflection: Fresnel on and Ray trace on
-    //  6		Transparency: Refraction on
-    //  		Reflection: Fresnel off and Ray trace on
-    //  7		Transparency: Refraction on
-    //  		Reflection: Fresnel on and Ray trace on
-    //  8		Reflection on and Ray trace off
-    //  9		Transparency: Glass on
-    //  		Reflection: Ray trace off
-    //  10		Casts shadows onto invisible surfaces
 
     float type = 0; // 0 - Metallic;  1 - Painted; 2 - Transparent;
 
@@ -430,7 +414,6 @@ RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d,
 
     if (type == 0) // Type::Metallic
     {
-
         diffuse = RGB(color);
         specular = RGB(color);
 
@@ -478,78 +461,91 @@ RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d,
         N = Ns;
         // Shin = 40;
     }
-
-    // setMaterial(diffuse, specular, ambient, Trans, Shin, N);
-
-    // if (type == 0) // Type::Metallic
-    // {
-    //     float Ys = mRefl * mKspec_refl;
-    //     float Yd = mRefl * (1 - mKspec_refl);
-    //     changeLuminance(diff, Yd);
-    //     changeLuminance(diff, Ys);
-    //     amb = spec;
-    //     opacity = 0;
-    //     Shin = 40; // примерно
-    //     N = 1;
-    // }
-    // else if (type == 1) // Type::Painted
-    // {
-
-    //     float Ys = mRefl * mKspec_refl;
-    //     float Yd = mRefl * (1 - Ys);
-    //     changeLuminance(diff, Yd);
-    //     spec = RGB(0, 0, 0);
-    //     changeLuminance(spec, Ys); // grayscale
-    //     amb = spec;
-
-    //     opacity = 0;
-    //     Shin = 80; // примерно
-    //     N = 1;
-    // }
-    // else if (type == 2) // Type::Transparent
-    // {
-    //     float Y = mRefl + mTrans;
-    //     diff.Set(0, 0, 0);
-    //     changeLuminance(spec, mRefl);
-    //     changeLuminance(amb, Y);
-
-    //     opacity = mTrans / Y;
-    //     Shin = 40; // примерно
-    //     N = mN;
-    // }
-
-    // case Type::Metallic:
-    //     Y = mRefl;
-    //     break;
-    // case Type::Painted:
-    //     K = mKspec_refl == 1 ? 0 : mKspec_refl * mRefl;
-    //     Y = (mRefl - K) / (1 - K);
-    //     break;
-    // case Type::Transparent:
-
-    // // Нормируем результаты расчета
-    // Direct /= Ymax;
-    // Photon /= Ymax;
-
-    // // sRGB -> linearRGB
-    // RGBtoLinear(diffuse);
-    // RGBtoLinear(specular);
-    // RGBtoLinear(transmission);
-
-    // // Производим расчет
-    // RGB Yrgb = Direct * specular + Photon * diffuse;
-    // RGB Yrgb_trans = (Direct + Photon) * transmission; // прозрачная часть если нужна
-
-    // // linearRGB -> sRGB
-    // RGBfromLinear(Yrgb);
-    // RGBfromLinear(Yrgb_trans); // прозрачная часть если нужна
-
-    // return Yrgb;
 }
 
-// RGB MaterialFromPhong(Material)
-// {
-// }
+// Получить материал из  Phong материала
+RGB PhongToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
+{
+    // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
+    // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
+    // Ks -  Specular color      [[0,1],[0,1],[0,1]]
+    // Ke -  Emission color      [[0,1],[0,1],[0,1]]
+
+    // Ns -  Shininess           [0,128]
+    // Ni -  Refractive index    [1,2]
+
+    // d -   dissolve (1/opacity)  [0,1]
+
+    float type = 1; // 0 - Metallic;  1 - Painted; 2 - Transparent;
+
+    if (d < 1.0)
+    {
+        type = 2;
+    }
+    else if (!Ks.isEmpty() && Kd == Ks)
+    {
+        type = 0;
+    }
+
+    RGB diffuse;
+    RGB specular;
+    RGB ambient;
+    RGB emission; // not use
+
+    float Refl, Kspec_refl, Trans, N, Shin;
+
+    // Trans = 0;
+    // N = 1;
+    // Shin = Ns;
+
+    RGB color = Kd;
+    if (color.isEmpty())
+    {
+        color = Ks;
+    }
+
+    if (type == 0) // Type::Metallic
+    {
+
+        float Ys = getY(Ks) + getY(Ka);
+        float Yd = getY(Kd);
+        float Y = Ys + Yd;
+        NormaliseY(Y, Ys, Yd);
+
+        changeLuminance(color, Y);
+
+        Refl = Y;
+        Kspec_refl = Ys / Y;
+        Shin = 40;
+    }
+    else if (type == 1) // Type::Painted
+    {
+
+        float Ys = getY(Ks);
+        float Yd = getY(Kd) + getY(Ka);
+        float Y = Ys + Yd;
+        NormaliseY(Y, Ys, Yd);
+
+        changeLuminance(color, Y);
+
+        Refl = Y;
+        Kspec_refl = Ys / Y;
+        Shin = 80;
+    }
+    else if (type == 2) // Type::Transparent
+    {
+
+        Trans = 1 / d;
+        Refl = getY(Ks) + getY(Kd);
+        float Y = Refl + Trans;
+        NormaliseY(Y, Refl, Trans);
+
+        changeLuminance(color, Y);
+
+        N = Ns;
+        Shin = 40;
+    }
+}
 
 // Classes ---------------------------------------------------------------------
 
