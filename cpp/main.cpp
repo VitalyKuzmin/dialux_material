@@ -112,6 +112,31 @@ public:
     }
 };
 
+class DialuxMaterial
+{
+
+public:
+    // Properties
+    RGB mColor;         // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
+    float mRefl;        // Reflection factor        [0,0.9]
+    float mKspec_refl;  // Reflective coating       [0,1]
+    float mTrans;       // Degree of transmission   [0,1]
+    float mN;           // Refractive index         [1,2]
+    float mShin;        // Shininness               [1,128]
+    unsigned int mType; // Material type            [0 - Metallic;  1 - Painted; 2 - Transparent]
+    DialuxMaterial(const RGB &color, const unsigned int &type, const float &refl,
+                   const float &kspec_refl, const float &trans, const float &n, const float &shin)
+    {
+        mColor = RGB(color);
+        mType = type;
+        mRefl = refl;
+        mKspec_refl = kspec_refl;
+        mTrans = trans;
+        mN = n;
+        mShin = shin;
+    }
+};
+
 // Tools ------------------------------------------------------------------------------------
 
 // sRGB <-> lRGB (https://mina86.com/2019/srgb-xyz-conversion)
@@ -370,101 +395,9 @@ void NormaliseY(float &Ysum, float &Y1, float &Y2)
 }
 
 // // Получить материал из  Phong материала
-RGB OpenGLToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
-{
-    // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
-    // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
-    // Ks -  Specular color      [[0,1],[0,1],[0,1]]
-    // Ke -  Emission color      [[0,1],[0,1],[0,1]]
-
-    // Ns -  Shininess           [0,128]
-    // Ni -  Refractive index    [1,2]
-
-    // d -   dissolve (1/opacity)  [0,1]
-
-    float type = 0; // 0 - Metallic;  1 - Painted; 2 - Transparent;
-
-    if (d < 1.0) // && illum > 3
-    {
-        type = 2;
-    }
-    else if (Kd == Ks)
-    {
-        type = 1;
-    }
-
-    RGB diffuse;
-    RGB specular;
-    RGB ambient;
-    RGB emission;
-
-    float Trans;
-    float Shin;
-    float N;
-
-    emission = RGB(0, 0, 0);
-    Shin = Ns;
-
-    RGB color = Kd;
-    if (color.isEmpty())
-    {
-        color = Ks;
-    }
-    ambient = RGB(color);
-
-    if (type == 0) // Type::Metallic
-    {
-        diffuse = RGB(color);
-        specular = RGB(color);
-
-        float Ys = getY(Ks);
-        float Yd = getY(Kd);
-        float Y = Ys + Yd;
-
-        NormaliseY(Y, Ys, Yd);
-        changeLuminance(specular, Ys);
-        changeLuminance(diffuse, Yd);
-
-        Trans = 0;
-        N = 1;
-        // Shin = 40;
-    }
-    else if (type == 1) // Type::Painted
-    {
-        diffuse = RGB(color);
-        specular = RGB(0, 0, 0); // Grayscale
-
-        float Ys = getY(Ks);
-        float Yd = getY(Kd);
-        float Y = Ys + Yd;
-
-        NormaliseY(Y, Ys, Yd);
-        changeLuminance(specular, Ys);
-        changeLuminance(diffuse, Yd);
-
-        Trans = 0;
-        N = 1;
-        // Shin = 80;
-    }
-    else if (type == 2) // Type::Transparent
-    {
-
-        diffuse = RGB(0, 0, 0); // zero
-        specular = RGB(color);
-        Trans = 1 / d;
-        float Refl = getY(Ks) + getY(Kd);
-        float Y = Refl + Trans;
-
-        NormaliseY(Y, Refl, Trans);
-        changeLuminance(specular, Refl);
-        changeLuminance(ambient, Y);
-        N = Ns;
-        // Shin = 40;
-    }
-}
 
 // Получить материал из  Phong материала
-RGB OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
+DialuxMaterial OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
 {
     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
@@ -487,18 +420,13 @@ RGB OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, f
         type = 0;
     }
 
-    RGB diffuse;
-    RGB specular;
-    RGB ambient;
-    RGB emission; // not use
-
     float Refl, Kspec_refl, Trans, N, Shin;
+    RGB color = Kd;
 
     // Trans = 0;
     // N = 1;
     // Shin = Ns;
 
-    RGB color = Kd;
     if (color.isEmpty())
     {
         color = Ks;
@@ -545,6 +473,8 @@ RGB OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, f
         N = Ns;
         Shin = 40;
     }
+
+    return DialuxMaterial(color, type, Refl, Kspec_refl, Trans, N, Shin);
 }
 
 // Classes ---------------------------------------------------------------------
@@ -1118,3 +1048,96 @@ int main()
     materials.show();
     master.show_web();
 }
+
+// void OpenGLToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
+// {
+//     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
+//     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
+//     // Ks -  Specular color      [[0,1],[0,1],[0,1]]
+//     // Ke -  Emission color      [[0,1],[0,1],[0,1]]
+
+//     // Ns -  Shininess           [0,128]
+//     // Ni -  Refractive index    [1,2]
+
+//     // d -   dissolve (1/opacity)  [0,1]
+
+//     float type = 0; // 0 - Metallic;  1 - Painted; 2 - Transparent;
+
+//     if (d < 1.0) // && illum > 3
+//     {
+//         type = 2;
+//     }
+//     else if (Kd == Ks)
+//     {
+//         type = 1;
+//     }
+
+//     RGB diffuse;
+//     RGB specular;
+//     RGB ambient;
+//     RGB emission;
+
+//     float Trans;
+//     float Shin;
+//     float N;
+
+//     emission = RGB(0, 0, 0);
+//     Shin = Ns;
+
+//     RGB color = Kd;
+//     if (color.isEmpty())
+//     {
+//         color = Ks;
+//     }
+//     ambient = RGB(color);
+
+//     if (type == 0) // Type::Metallic
+//     {
+//         diffuse = RGB(color);
+//         specular = RGB(color);
+
+//         float Ys = getY(Ks);
+//         float Yd = getY(Kd);
+//         float Y = Ys + Yd;
+
+//         NormaliseY(Y, Ys, Yd);
+//         changeLuminance(specular, Ys);
+//         changeLuminance(diffuse, Yd);
+
+//         Trans = 0;
+//         N = 1;
+//         // Shin = 40;
+//     }
+//     else if (type == 1) // Type::Painted
+//     {
+//         diffuse = RGB(color);
+//         specular = RGB(0, 0, 0); // Grayscale
+
+//         float Ys = getY(Ks);
+//         float Yd = getY(Kd);
+//         float Y = Ys + Yd;
+
+//         NormaliseY(Y, Ys, Yd);
+//         changeLuminance(specular, Ys);
+//         changeLuminance(diffuse, Yd);
+
+//         Trans = 0;
+//         N = 1;
+//         // Shin = 80;
+//     }
+//     else if (type == 2) // Type::Transparent
+//     {
+
+//         diffuse = RGB(0, 0, 0); // zero
+//         specular = RGB(color);
+//         Trans = 1 / d;
+//         float Refl = getY(Ks) + getY(Kd);
+//         float Y = Refl + Trans;
+
+//         NormaliseY(Y, Refl, Trans);
+//         changeLuminance(specular, Refl);
+//         changeLuminance(ambient, Y);
+//         N = Ns;
+//         // Shin = 40;
+//     }
+// }
