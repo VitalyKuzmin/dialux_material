@@ -370,7 +370,7 @@ void NormaliseY(float &Ysum, float &Y1, float &Y2)
 }
 
 // // Получить материал из  Phong материала
-RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
+RGB OpenGLToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
 {
     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
@@ -464,7 +464,7 @@ RGB PhongToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
 }
 
 // Получить материал из  Phong материала
-RGB PhongToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
+RGB OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
 {
     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
