@@ -396,7 +396,7 @@ void NormaliseY(float &Ysum, float &Y1, float &Y2)
 
 // // Получить материал из  Phong материала
 
-// Получить материал из  Phong материала
+// Получить Dialux материал из OpenGL материала
 DialuxMaterial OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
 {
     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
