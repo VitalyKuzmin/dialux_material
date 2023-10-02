@@ -1047,95 +1047,114 @@ int main()
     master.show_web();
 }
 
-// void OpenGLToMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
-// {
-//     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
-//     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
-//     // Ks -  Specular color      [[0,1],[0,1],[0,1]]
-//     // Ke -  Emission color      [[0,1],[0,1],[0,1]]
+// Not Use ------------------------------------------------------------------------------------------------------
 
-//     // Ns -  Shininess           [0,128]
-//     // Ni -  Refractive index    [1,2]
+void OpenGLToShaderMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d, unsigned int illum)
+{
+    // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
+    // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
+    // Ks -  Specular color      [[0,1],[0,1],[0,1]]
+    // Ke -  Emission color      [[0,1],[0,1],[0,1]]
 
-//     // d -   dissolve (1/opacity)  [0,1]
+    // Ns -  Shininess           [0,128]
+    // Ni -  Refractive index    [1,2]
 
-//     float type = 0; // 0 - Metallic;  1 - Painted; 2 - Transparent;
+    // d -   dissolve (1/opacity)  [0,1]
 
-//     if (d < 1.0) // && illum > 3
-//     {
-//         type = 2;
-//     }
-//     else if (Kd == Ks)
-//     {
-//         type = 1;
-//     }
+    // illum - illumination model [0-10]
+    //  0		Color on and Ambient off      (Painted)
+    //  1		Color on and Ambient on       (Painted)
+    //  2		Highlight on
+    //  3		Reflection on and Ray trace on
+    //  4		Transparency: Glass on
+    //  		Reflection: Ray trace on
+    //  5		Reflection: Fresnel on and Ray trace on
+    //  6		Transparency: Refraction on
+    //  		Reflection: Fresnel off and Ray trace on
+    //  7		Transparency: Refraction on
+    //  		Reflection: Fresnel on and Ray trace on
+    //  8		Reflection on and Ray trace off
+    //  9		Transparency: Glass on
+    //  		Reflection: Ray trace off
+    //  10		Casts shadows onto invisible surfaces
 
-//     RGB diffuse;
-//     RGB specular;
-//     RGB ambient;
-//     RGB emission;
+    float type = 0; // 0 - Metallic;  1 - Painted; 2 - Transparent;
 
-//     float Trans;
-//     float Shin;
-//     float N;
+    if (d < 1.0) // && illum > 3
+    {
+        type = 2;
+    }
+    else if (Kd == Ks)
+    {
+        type = 1;
+    }
 
-//     emission = RGB(0, 0, 0);
-//     Shin = Ns;
+    RGB diffuse;
+    RGB specular;
+    RGB ambient;
+    RGB emission;
 
-//     RGB color = Kd;
-//     if (color.isEmpty())
-//     {
-//         color = Ks;
-//     }
-//     ambient = RGB(color);
+    float Trans;
+    float Shin;
+    float N;
 
-//     if (type == 0) // Type::Metallic
-//     {
-//         diffuse = RGB(color);
-//         specular = RGB(color);
+    emission = RGB(0, 0, 0);
+    Shin = Ns;
 
-//         float Ys = getY(Ks);
-//         float Yd = getY(Kd);
-//         float Y = Ys + Yd;
+    RGB color = Kd;
+    if (color.isEmpty())
+    {
+        color = Ks;
+    }
+    ambient = RGB(color);
 
-//         NormaliseY(Y, Ys, Yd);
-//         changeLuminance(specular, Ys);
-//         changeLuminance(diffuse, Yd);
+    if (type == 0) // Type::Metallic
+    {
+        diffuse = RGB(color);
+        specular = RGB(color);
 
-//         Trans = 0;
-//         N = 1;
-//         // Shin = 40;
-//     }
-//     else if (type == 1) // Type::Painted
-//     {
-//         diffuse = RGB(color);
-//         specular = RGB(0, 0, 0); // Grayscale
+        float Ys = getY(Ks);
+        float Yd = getY(Kd);
+        float Y = Ys + Yd;
 
-//         float Ys = getY(Ks);
-//         float Yd = getY(Kd);
-//         float Y = Ys + Yd;
+        NormaliseY(Y, Ys, Yd);
+        changeLuminance(specular, Ys);
+        changeLuminance(diffuse, Yd);
 
-//         NormaliseY(Y, Ys, Yd);
-//         changeLuminance(specular, Ys);
-//         changeLuminance(diffuse, Yd);
+        Trans = 0;
+        N = 1;
+        // Shin = 40;
+    }
+    else if (type == 1) // Type::Painted
+    {
+        diffuse = RGB(color);
+        specular = RGB(0, 0, 0); // Grayscale
 
-//         Trans = 0;
-//         N = 1;
-//         // Shin = 80;
-//     }
-//     else if (type == 2) // Type::Transparent
-//     {
+        float Ys = getY(Ks);
+        float Yd = getY(Kd);
+        float Y = Ys + Yd;
 
-//         diffuse = RGB(0, 0, 0); // zero
-//         specular = RGB(color);
-//         Trans = 1 / d;
-//         float Refl = getY(Ks) + getY(Kd);
-//         float Y = Refl + Trans;
+        NormaliseY(Y, Ys, Yd);
+        changeLuminance(specular, Ys);
+        changeLuminance(diffuse, Yd);
 
-//         NormaliseY(Y, Refl, Trans);
-//         changeLuminance(specular, Refl);
-//         changeLuminance(ambient, Y);
-//         N = Ns;
-//         // Shin = 40;
-//     }
-// }
+        Trans = 0;
+        N = 1;
+        // Shin = 80;
+    }
+    else if (type == 2) // Type::Transparent
+    {
+
+        diffuse = RGB(0, 0, 0); // zero
+        specular = RGB(color);
+        Trans = 1 / d;
+        float Refl = getY(Ks) + getY(Kd);
+        float Y = Refl + Trans;
+
+        NormaliseY(Y, Refl, Trans);
+        changeLuminance(specular, Refl);
+        changeLuminance(ambient, Y);
+        N = Ns;
+        // Shin = 40;
+    }
+}
