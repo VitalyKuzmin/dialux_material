@@ -1,133 +1,29 @@
-#include <iostream>
+// #include <iostream>
 #include <iomanip>
 #include <cmath>
 #include <vector>
 #include <string>
 
+#include "tools.h"
+
 using namespace std;
-
-class RGB
-{
-public:
-    float r; // red
-    float g; // green
-    float b; // blue
-
-    RGB()
-    {
-        Set(0.0, 0.0, 0.0);
-    }
-    RGB(const float &R, const float &G, const float &B)
-    {
-        Set(R, G, B);
-    }
-
-    RGB(const RGB &rgb)
-    {
-        this->r = rgb.r;
-        this->g = rgb.g;
-        this->b = rgb.b;
-    }
-
-    void Set(const float &R, const float &G, const float &B)
-    {
-        r = R;
-        g = G;
-        b = B;
-    }
-
-    void show()
-    {
-        cout << "(" << r << ", " << g << ", " << b << ")";
-    }
-
-    void show255()
-    {
-        cout << "(" << round(r * 255) << ", " << round(g * 255) << ", " << round(b * 255) << ")";
-    }
-
-    void clear()
-    {
-        Set(0.0, 0.0, 0.0);
-    }
-
-    float sum()
-    {
-        return r + g + b;
-    }
-    float max()
-    {
-        float max = r;
-        max = (g > max) ? g : max;
-        max = (b > max) ? b : max;
-        return max;
-    }
-
-    // Overloading * operator
-    RGB operator*(const float &scalar)
-    {
-        return RGB(r * scalar, g * scalar, b * scalar);
-    }
-
-    // Overloading rgb*rgb operator
-    RGB operator*(const RGB &rgb)
-    {
-        return RGB(r * rgb.r, g * rgb.g, b * rgb.b);
-    }
-
-    // Overloading rgb*rgb operator
-    RGB operator+(const RGB &rgb)
-    {
-        return RGB(r + rgb.r, g + rgb.g, b + rgb.b);
-    }
-
-    bool operator==(const RGB &rgb)
-    {
-        return (r == rgb.r && g == rgb.g && b == rgb.b);
-    }
-
-    bool operator!=(const RGB &rgb)
-    {
-        return (r != rgb.r && g != rgb.g && b != rgb.b);
-    }
-
-    bool isEmpty()
-    {
-        return (r == 0.0 && g == 0.0 && b == 0.0);
-    }
-
-    // Overloading /= operator
-    RGB &operator/=(const float &scalar)
-    {
-        r /= scalar;
-        g /= scalar;
-        b /= scalar;
-        return (*this); // return RGB(r / scalar, g / scalar, b / scalar);
-    }
-
-    RGB getNorm()
-    {
-        float Max = max();
-        return RGB((r / Max), (g / Max), (b / Max));
-    }
-};
 
 class DialuxMaterial
 {
 
 public:
     // Properties
-    RGB mColor;         // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
+    color3f mColor;     // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
     float mRefl;        // Reflection factor        [0,0.9]
     float mKspec_refl;  // Reflective coating       [0,1]
     float mTrans;       // Degree of transmission   [0,1]
     float mN;           // Refractive index         [1,2]
     float mShin;        // Shininness               [1,128]
     unsigned int mType; // Material type            [0 - Metallic;  1 - Painted; 2 - Transparent]
-    DialuxMaterial(const RGB &color, const unsigned int &type, const float &refl,
+    DialuxMaterial(const color3f &color, const unsigned int &type, const float &refl,
                    const float &kspec_refl, const float &trans, const float &n, const float &shin)
     {
-        mColor = RGB(color);
+        mColor = color3f(color);
         mType = type;
         mRefl = refl;
         mKspec_refl = kspec_refl;
@@ -166,14 +62,14 @@ float fromLinear(float value)
     return value;
 };
 
-void RGBtoLinear(RGB &rgb)
+void RGBtoLinear(color3f &rgb)
 {
     rgb.r = toLinear(rgb.r);
     rgb.g = toLinear(rgb.g);
     rgb.b = toLinear(rgb.b);
 }
 
-void RGBfromLinear(RGB &rgb)
+void RGBfromLinear(color3f &rgb)
 {
     rgb.r = fromLinear(rgb.r);
     rgb.g = fromLinear(rgb.g);
@@ -204,26 +100,19 @@ unsigned int rgb_max_i(float *arr, unsigned int no_index = -1)
     return index;
 };
 
-float getY(const RGB &rgb)
+float getY(const color3f &rgb)
 {
     return K_R * toLinear(rgb.r) + K_G * toLinear(rgb.g) + K_B * toLinear(rgb.b);
 }
 
-void toGray(RGB &rgb)
+void toGray(color3f &rgb)
 {
     float Y = fromLinear(getY(rgb));
-    rgb = RGB(Y, Y, Y);
+    rgb = color3f(Y, Y, Y);
 }
 
-void changeLuminance(RGB &rgb, const float &Ynew)
+void changeY(float *color, const float &Ynew)
 {
-    float color[3];
-
-    // sRGB to linear RGB --------------------------------
-    color[0] = toLinear(rgb.r);
-    color[1] = toLinear(rgb.g);
-    color[2] = toLinear(rgb.b);
-
     const float K[3] = {K_R, K_G, K_B};
 
     // for no division to null errors --------------------------------
@@ -232,7 +121,6 @@ void changeLuminance(RGB &rgb, const float &Ynew)
         if (color[j] == 0.0)
             color[j] = 0.000000001;
     }
-
     // Change Luminance ---------------------------------------------------
     float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
     float coeff = Ynew / sum;
@@ -288,75 +176,59 @@ void changeLuminance(RGB &rgb, const float &Ynew)
             color[j] *= coeff;
         }
     }
+}
+
+void changeLuminance(color3f &rgb, const float &Ynew)
+{
+    float color[3];
+
+    // sRGB to linear RGB --------------------------------
+    color[0] = toLinear(rgb.r);
+    color[1] = toLinear(rgb.g);
+    color[2] = toLinear(rgb.b);
+
+    changeY(color, Ynew);
 
     // linear RGB to sRGB --------------------------------
     rgb.r = fromLinear(color[0]);
-    rgb.g = fromLinear(color[0]);
-    rgb.b = fromLinear(color[1]);
+    rgb.g = fromLinear(color[1]);
+    rgb.b = fromLinear(color[2]);
 };
 
-void changeLuminance2(float *color, float Ynew)
+void changeLuminance2(color3f &rgb, const float &Ynew)
 {
-    const float K[3] = {K_R, K_G, K_B};
-    // Change Luminance ---------------------------------------------------
-    float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
-    float coeff; //= Ynew / sum;
-    unsigned int index = rgb_max_i(color);
-    // color[index] *= coeff;
-    if (color[index] > 1)
-    {
-        color[index] = 1;
-        sum = 0;
-        for (int j = 0; j < 3; j++)
-        {
-            if (j == index)
-                continue;
-            sum += color[j] * K[j];
-        }
-        coeff = (Ynew - K[index]) / sum;
-        unsigned int index2 = rgb_max_i(color, index);
-        color[index2] = color[index2] * coeff;
-        if (color[index2] > 1)
-        {
-            color[index2] = 1;
-            unsigned int index3;
-            for (int j = 0; j < 3; j++)
-            {
-                if (j == index || j == index2)
-                    continue;
-                sum += color[j] * K[j];
-                index3 = j;
-            }
-            coeff = (Ynew - K[index] - K[index2]) / sum;
+    float color[3];
 
-            color[index3] *= coeff;
+    // sRGB to linear RGB --------------------------------
+    color[0] = toLinear(rgb.r);
+    color[1] = toLinear(rgb.g);
+    color[2] = toLinear(rgb.b);
 
-            if (color[index3] > 1)
-                color[index3] = 1;
-        }
-        else
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                if (j == index || j == index2)
-                    continue;
-                color[j] *= coeff;
-            }
-        }
-    }
-    else
+    changeY(color, Ynew);
+
+    rgb.r = color[0];
+    rgb.g = color[1];
+    rgb.b = color[2];
+};
+
+void checkMaterialColor(color3f &rgb, const float &Y)
+{
+    float color[3];
+
+    // sRGB to linear RGB --------------------------------
+    color[0] = toLinear(rgb.r);
+    color[1] = toLinear(rgb.g);
+    color[2] = toLinear(rgb.b);
+
+    float sum = K_R * color[0] + K_G * color[1] + K_B * color[2];
+    if (sum != Y)
     {
-        for (int j = 0; j < 3; j++)
-        {
-            if (j == index)
-                continue;
-            color[j] *= coeff;
-        }
+        changeY(color, Y);
     }
-}
+};
 
 // Получить цвет пикселя из прямой и отраженной составляющей луча падающий на определенный материал
-RGB GetColor(RGB Direct, RGB Photon, float Ymax, RGB diffuse, RGB specular, RGB transmission)
+color3f GetColor(color3f Direct, color3f Photon, float Ymax, color3f diffuse, color3f specular, color3f transmission)
 {
     // Нормируем результаты расчета
     Direct /= Ymax;
@@ -368,8 +240,8 @@ RGB GetColor(RGB Direct, RGB Photon, float Ymax, RGB diffuse, RGB specular, RGB 
     RGBtoLinear(transmission);
 
     // Производим расчет
-    RGB Yrgb = Direct * specular + Photon * diffuse;
-    RGB Yrgb_trans = (Direct + Photon) * transmission; // прозрачная часть если нужна
+    color3f Yrgb = Direct * specular + Photon * diffuse;
+    color3f Yrgb_trans = (Direct + Photon) * transmission; // прозрачная часть если нужна
 
     // linearRGB -> sRGB
     RGBfromLinear(Yrgb);
@@ -395,7 +267,7 @@ void NormaliseY(float &Ysum, float &Y1, float &Y2)
 }
 
 // Получить Dialux материал из OpenGL материала
-DialuxMaterial OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d)
+DialuxMaterial OpenGLToDialuxMaterial(color3f Ka, color3f Kd, color3f Ks, color3f Ke, float Ns, float Ni, float d)
 {
     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
@@ -419,7 +291,7 @@ DialuxMaterial OpenGLToDialuxMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, 
     }
 
     float Refl, Kspec_refl, Trans, N, Shin;
-    RGB color = Kd;
+    color3f color = Kd;
 
     // Trans = 0;
     // N = 1;
@@ -482,10 +354,10 @@ class Material
 public:
     string Name;
 
-    RGB diff; // Diffuse color      [0,1]
-    RGB spec; // Specular color     [0,1]
-    RGB amb;  // Ambient color      [0,1]
-    float Tr; // Transparency       [0,1]
+    color3f diff; // Diffuse color      [0,1]
+    color3f spec; // Specular color     [0,1]
+    color3f amb;  // Ambient color      [0,1]
+    float Tr;     // Transparency       [0,1]
 
     unsigned int Shin; // Shininess                [0,128]
     float N;           // Refractive index         [1,2]
@@ -499,9 +371,9 @@ public:
 
     Material(const Material &mat, string name)
     {
-        this->diff = RGB(mat.diff);
-        this->spec = RGB(mat.spec);
-        this->amb = RGB(mat.amb);
+        this->diff = color3f(mat.diff);
+        this->spec = color3f(mat.spec);
+        this->amb = color3f(mat.amb);
 
         this->Tr = mat.Tr;
         this->Shin = mat.Shin;
@@ -538,7 +410,7 @@ public:
 
     //  Show web -------------------------------------------------------------------------------
 
-    string YtoStr(string name, RGB &Yrgb)
+    string YtoStr(string name, color3f &Yrgb)
     {
         return "%22" + name + "%22:" + "[" + to_string(Yrgb.r) + "," + to_string(Yrgb.g) + "," + to_string(Yrgb.b) + "]";
     }
@@ -578,7 +450,7 @@ public:
     };
 
     // Properties
-    RGB mColor;        // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
+    color3f mColor;    // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
     float mRefl;       // Reflection factor        [0,0.9]
     float mKspec_refl; // Reflective coating       [0,1]
     float mTrans;      // Degree of transmission   [0,1]
@@ -592,7 +464,7 @@ public:
     // Constructors
     MaterialMaster()
     {
-        mColor = RGB(0, 0, 0);
+        mColor = color3f(0, 0, 0);
         mRefl = 0.0;
         mKspec_refl = 0.0;
         mTrans = 0.0;
@@ -604,13 +476,13 @@ public:
     // Init
     void init(float R, float G, float B, Type type, const float &r, const float &k)
     {
-        mColor.Set(R / 255, G / 255, B / 255);
+        mColor.set(R / 255, G / 255, B / 255);
         SetProps(type, r, k);
     }
 
     void init(float R, float G, float B, Type type, const float &r, const float &t, const float &n)
     {
-        mColor.Set(R / 255, G / 255, B / 255);
+        mColor.set(R / 255, G / 255, B / 255);
         SetProps(type, r, t, n);
     }
 
@@ -661,7 +533,7 @@ public:
 
     void setColor(const float &R, const float &G, const float &B)
     {
-        mColor.Set(R / 255, G / 255, B / 255);
+        mColor.set(R / 255, G / 255, B / 255);
         mKoeff = -1;
         update(1);
     }
@@ -764,7 +636,7 @@ public:
         update();
     }
 
-    void setMaterial(const RGB &d, const RGB &s, const RGB &a, const float &tr, const float &shin, const float &n)
+    void setMaterial(const color3f &d, const color3f &s, const color3f &a, const float &tr, const float &shin, const float &n)
     {
         mMaterial.diff = d;
         mMaterial.spec = s;
@@ -777,7 +649,7 @@ public:
     // GetY ----------------------------------------------------------------
     float getYfromRgb()
     {
-        RGB Yrgb;
+        color3f Yrgb;
         // sRGB to Y
         Yrgb.r = toLinear(mColor.r) * K_R;
         Yrgb.g = toLinear(mColor.g) * K_G;
@@ -875,9 +747,9 @@ public:
     // Render --------------------------------------------------------
     void render()
     {
-        RGB diff(mColor);
-        RGB spec(mColor);
-        RGB amb(mColor);
+        color3f diff(mColor);
+        color3f spec(mColor);
+        color3f amb(mColor);
 
         float opacity;
         float Shin;
@@ -901,7 +773,7 @@ public:
             float Ys = mRefl * mKspec_refl;
             float Yd = mRefl * (1 - Ys);
             changeLuminance(diff, Yd);
-            spec = RGB(0, 0, 0);
+            spec = color3f(0, 0, 0);
             changeLuminance(spec, Ys); // grayscale
             amb = spec;
 
@@ -912,7 +784,7 @@ public:
         else if (mType == Type::Transparent)
         {
             float Y = mRefl + mTrans;
-            diff.Set(0, 0, 0);
+            diff.set(0, 0, 0);
             changeLuminance(spec, mRefl);
             changeLuminance(amb, Y);
 
@@ -1049,7 +921,7 @@ int main()
 
 // Not Use ------------------------------------------------------------------------------------------------------
 
-void OpenGLToShaderMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, float d, unsigned int illum)
+void OpenGLToShaderMaterial(color3f Ka, color3f Kd, color3f Ks, color3f Ke, float Ns, float Ni, float d, unsigned int illum)
 {
     // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
     // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
@@ -1089,29 +961,29 @@ void OpenGLToShaderMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, 
         type = 1;
     }
 
-    RGB diffuse;
-    RGB specular;
-    RGB ambient;
-    RGB emission;
+    color3f diffuse;
+    color3f specular;
+    color3f ambient;
+    color3f emission;
 
     float Trans;
     float Shin;
     float N;
 
-    emission = RGB(0, 0, 0);
+    emission = color3f(0, 0, 0);
     Shin = Ns;
 
-    RGB color = Kd;
+    color3f color = Kd;
     if (color.isEmpty())
     {
         color = Ks;
     }
-    ambient = RGB(color);
+    ambient = color3f(color);
 
     if (type == 0) // Type::Metallic
     {
-        diffuse = RGB(color);
-        specular = RGB(color);
+        diffuse = color3f(color);
+        specular = color3f(color);
 
         float Ys = getY(Ks);
         float Yd = getY(Kd);
@@ -1127,8 +999,8 @@ void OpenGLToShaderMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, 
     }
     else if (type == 1) // Type::Painted
     {
-        diffuse = RGB(color);
-        specular = RGB(0, 0, 0); // Grayscale
+        diffuse = color3f(color);
+        specular = color3f(0, 0, 0); // Grayscale
 
         float Ys = getY(Ks);
         float Yd = getY(Kd);
@@ -1145,8 +1017,8 @@ void OpenGLToShaderMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, 
     else if (type == 2) // Type::Transparent
     {
 
-        diffuse = RGB(0, 0, 0); // zero
-        specular = RGB(color);
+        diffuse = color3f(0, 0, 0); // zero
+        specular = color3f(color);
         Trans = 1 / d;
         float Refl = getY(Ks) + getY(Kd);
         float Y = Refl + Trans;
@@ -1157,4 +1029,243 @@ void OpenGLToShaderMaterial(RGB Ka, RGB Kd, RGB Ks, RGB Ke, float Ns, float Ni, 
         N = Ns;
         // Shin = 40;
     }
+}
+
+// PuryaMesh
+class PuryaMesh
+{
+private:
+    // const Geometry *m_geom_mesh;
+    Geometry *m_calc_mesh;
+
+private:
+    // illuminarium::api::Point3 *m_geom_points;
+    //  illuminarium::api::Face *m_geom_faces;
+    u32 m_geom_points_count;
+    u32 m_geom_faces_count;
+
+private:
+    //  illuminarium::api::CalculatedPoint *m_calc_points_direct;
+    //  illuminarium::api::CalculatedPoint *m_calc_points_photon;
+    u32 m_calc_points_count;
+
+public:
+    PuryaMesh();
+    ~PuryaMesh();
+
+private:
+    void release();
+    void release_geometry_data();
+    void release_calc_points();
+
+private:
+    bool normalizeColor2(const color4f &color, float mvt);
+
+    // private:
+    // 	illuminarium::api::Point3* set_geometry_points(u32 count);
+    // 	illuminarium::api::Face* set_geometry_faces(u32 count);
+    // 	illuminarium::api::Point3* copy_geometry_points();
+
+public:
+    // const illuminarium::api::Point3* get_geometry_points() const { return m_geom_points; }
+    // const illuminarium::api::Face* get_geometry_faces() const	 { return m_geom_faces;  }
+    u32 get_geometry_points_count() const { return m_geom_points_count; }
+    u32 get_geometry_faces_count() const { return m_geom_faces_count; }
+
+public:
+    void toString(std::string &s) const;
+
+    // public:
+    //     u32 get_calc_points_count() const { return m_calc_points_count; }
+    //     const illuminarium::api::CalculatedPoint *get_calc_points_direct() const { return m_calc_points_direct; }
+    //     illuminarium::api::CalculatedPoint *get_calc_points_direct() { return m_calc_points_direct; }
+    //     const illuminarium::api::CalculatedPoint *get_calc_points_photon() const { return m_calc_points_photon; }
+    //     illuminarium::api::CalculatedPoint *get_calc_points_photon() { return m_calc_points_photon; }
+
+public:
+#ifdef _OLD
+    bool create(CalcSurface *surface, const primitive::Mesh *geom, primitive::Mesh *calc, const material &mtl);
+#endif
+
+    // bool create_geometry(const Geometry *geometry, const material &mtl);
+    // bool create_calc_geometry(Geometry *geometry);
+
+    void exchangeCalc();
+    bool adjustColor(color4f &min, color4f &max) const;
+    bool normalizeColor(color4f &color);
+    void setCalculated();
+    void initCalcVbo(bool on);
+};
+
+namespace
+{
+    static const float magic_1 = 0.008856451679036f;   // 216/24389
+    static const float magic_2 = 903.296296296296296f; // 24389/27
+
+    float log_a_to_base_b(const float &a, const float &b)
+    {
+        return log2(a) / log2(b);
+    }
+
+    float Y2LS(float Y) { return (Y <= magic_1) ? Y * magic_2 : std::pow(Y, 1.0f / 3.0f) * 116.0f - 16.0f; }
+
+    float Y2Log(float Y, float b = 8.0f) { return log_a_to_base_b(Y, b); }
+
+    void convert(color4f &color, float b = 0.0f)
+    {
+        float Y = (color.r + color.g + color.b) / 3.0f;
+        float Ynew;
+        if (Y > 0)
+        {
+            if (b > 0)
+            {
+                Ynew = Y2Log(Y, b);
+            }
+            else
+            {
+                Ynew = Y2LS(Y) * 0.01f;
+            }
+
+            color *= Ynew / Y;
+            color.a = 1.0f;
+        }
+    }
+}
+
+void applyMaterialToPoint(const material &mtl, color4f &c, color3f &vs, color3f &vd)
+{
+    const color4f &color = mtl.color;
+    const u32 type = mtl.type;
+    const float &Refl = mtl.Refl;
+    const float &Kspec_refl = mtl.Kspec_refl;
+    const color4f lamp_color(0.0f, 0.0f, 0.0f); //  цвет источника
+
+    if (type == 1) //  Painted
+    {
+        float Ys = Refl * Kspec_refl;
+        float Yd = Refl * (1 - Ys);
+        color3f diff(color);
+        color3f spec(lamp_color);
+        changeLuminance2(diff, Yd);
+        changeLuminance2(spec, Ys);
+        c = vd * diff + vs * spec;
+    }
+    else // Metallic && Transparent
+    {
+        color3f vs = vd + vs;
+        c = vs * color;
+    }
+}
+
+float getYfromMaterialProps(const material &mtl)
+{
+    float Y;
+    float K;
+    const u32 &type = mtl.type;
+    const float &Refl = mtl.Refl;
+    const float &Kspec_refl = mtl.Kspec_refl;
+    const float &Trans = mtl.Trans;
+    switch (type)
+    {
+    case 0: // Metallic:
+        Y = Refl;
+        break;
+    case 1: // Painted:
+        K = Kspec_refl == 1 ? 0 : Kspec_refl * Refl;
+        Y = (Refl - K) / (1 - K);
+        break;
+    case 2: // Transparent:
+        if (Refl == 0)
+        {
+            Y = Trans;
+        }
+        else
+        {
+            K = Trans / Refl;
+            Y = Refl * (1 + K);
+        }
+        break;
+    }
+    return Y;
+}
+
+void checkMaterial(const material &mtl)
+{
+    const color4f &color = mtl.color;
+    const u32 &type = mtl.type;
+    const float &Refl = mtl.Refl;
+
+    color3f c = color3f(color.r, color.g, color.b); // sRGB
+    float Y = getYfromMaterialProps(mtl);
+    checkMaterialColor(c, Y);
+
+    //   return c;
+}
+
+color3f color_normalize(color3f &color, float nmv)
+{
+    nmv /= 3;
+    color3f c(color);
+    float mx = gre_max(c.r, gre_max(c.g, c.b));
+    if (mx > nmv)
+    {
+        c.r /= mx;
+        c.g /= mx;
+        c.b /= mx;
+    }
+    else
+    {
+        c.r /= nmv;
+        c.g /= nmv;
+        c.b /= nmv;
+    }
+    return c;
+}
+
+bool PuryaMesh::normalizeColor(const color4f &color, float mvt)
+{
+    if (m_calc_points_count)
+    {
+        // mvt - максимальное значение (user), после которого считаем все белым (или макс. насыщенность)...
+
+        float sum(0.0f);
+        float mx(0.0f);
+        float Y(0);
+
+        const material &mtl = m_calc_mesh->getMaterial();
+        // Получить коэффициенты материала
+        checkMaterial(mtl);
+        vertex *v(nullptr);
+        color3f ic;
+        for (u32 i = 0; i < m_calc_points_count; ++i)
+        {
+            v = (*m_calc_mesh)[i];
+            color4f &c = v->c;   // цвет который необходимо расчитать для цветного режима
+            color4f &cg = v->cg; // цвет который необходимо расчитать для градаций серого режима
+
+            color3f &vs = v->vs;  // прямая составляющая освещенности
+            color3f &vd = v->vd;  // диффузная состовляющая освещенности
+            color3f vs = vd + vs; // суммарная освещенность
+
+            // Расчет для градаций серого (тут материал не учитываем )
+            Y = (vs.r + vs.g + vs.b) / 3.0f;
+            cg.set(Y, Y, Y);
+            // Нормируем
+            cg = color_normalize(color3f(cg), mvt);
+            // Применяем логарифмический контраст
+            convert(cg, 8.0f);
+
+            // Расчет для расчетного отображения
+            // Нормируем
+            vs = color_normalize(vs, mvt);
+            vd = color_normalize(vd, mvt);
+            // Применяем материал (реализуем последнее отражение в экран)
+            applyMaterialToPoint(mtl, c, vs, vd);
+
+            // Применяем фзиологический контраст
+            convert(c);
+        }
+        return true;
+    }
+    return false;
 }
