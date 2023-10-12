@@ -271,7 +271,7 @@ struct vertex3f
     color4f cg;
     color4f cr;
 
-    color3f vs; // прямая составляющая освещенности
+    color3f vl; // прямая составляющая освещенности
     color3f vd; // диффузная состовляющая освещенности
 
     float v;
@@ -571,23 +571,64 @@ struct vec4
     }
 };
 
-struct material
+class material
 {
-
-    color4f color;    // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
-    u32 type;         // 0 - Metallic;  1 - Painted; 2 - Transparent;
-    float Refl;       // Reflection factor        [0,0.9]
-    float Kspec_refl; // Reflective coating       [0,1]
-    float Trans;      // Degree of transmission   [0,1]
-    float N;          // Refractive index         [1,2]
-    float Shin;       // Shininness               [1,128]
 };
 
 class Geometry
 {
 
     material m_material;
+    vertex **points;
 
 public:
-    const material &getMaterial() const { return m_material; }
+    material &getMaterial() { return m_material; }
+    vertex *&operator[](u32 i) const { return points[i]; };
+};
+
+// PuryaMesh
+class PuryaMesh
+{
+private:
+    Geometry *m_calc_mesh;
+
+private:
+    u32 m_geom_points_count;
+    u32 m_geom_faces_count;
+
+private:
+    u32 m_calc_points_count;
+
+public:
+    PuryaMesh();
+    ~PuryaMesh();
+
+private:
+    void release();
+    void release_geometry_data();
+    void release_calc_points();
+
+private:
+    bool normalizeColor2(float mvt);
+
+public:
+    u32 get_geometry_points_count() const { return m_geom_points_count; }
+    u32 get_geometry_faces_count() const { return m_geom_faces_count; }
+
+public:
+    void toString(std::string &s) const;
+
+public:
+#ifdef _OLD
+    bool create(CalcSurface *surface, const primitive::Mesh *geom, primitive::Mesh *calc, const material &mtl);
+#endif
+
+    // bool create_geometry(const Geometry *geometry, const material &mtl);
+    // bool create_calc_geometry(Geometry *geometry);
+
+    void exchangeCalc();
+    bool adjustColor(color4f &min, color4f &max) const;
+    bool normalizeColor(color4f &color);
+    void setCalculated();
+    void initCalcVbo(bool on);
 };

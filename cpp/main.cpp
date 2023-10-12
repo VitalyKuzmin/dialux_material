@@ -1029,72 +1029,6 @@ void OpenGLToShaderMaterial(color3f Ka, color3f Kd, color3f Ks, color3f Ke, floa
         N = Ns;
         // Shin = 40;
     }
-}
-
-// PuryaMesh
-class PuryaMesh
-{
-private:
-    // const Geometry *m_geom_mesh;
-    Geometry *m_calc_mesh;
-
-private:
-    // illuminarium::api::Point3 *m_geom_points;
-    //  illuminarium::api::Face *m_geom_faces;
-    u32 m_geom_points_count;
-    u32 m_geom_faces_count;
-
-private:
-    //  illuminarium::api::CalculatedPoint *m_calc_points_direct;
-    //  illuminarium::api::CalculatedPoint *m_calc_points_photon;
-    u32 m_calc_points_count;
-
-public:
-    PuryaMesh();
-    ~PuryaMesh();
-
-private:
-    void release();
-    void release_geometry_data();
-    void release_calc_points();
-
-private:
-    bool normalizeColor2(const color4f &color, float mvt);
-
-    // private:
-    // 	illuminarium::api::Point3* set_geometry_points(u32 count);
-    // 	illuminarium::api::Face* set_geometry_faces(u32 count);
-    // 	illuminarium::api::Point3* copy_geometry_points();
-
-public:
-    // const illuminarium::api::Point3* get_geometry_points() const { return m_geom_points; }
-    // const illuminarium::api::Face* get_geometry_faces() const	 { return m_geom_faces;  }
-    u32 get_geometry_points_count() const { return m_geom_points_count; }
-    u32 get_geometry_faces_count() const { return m_geom_faces_count; }
-
-public:
-    void toString(std::string &s) const;
-
-    // public:
-    //     u32 get_calc_points_count() const { return m_calc_points_count; }
-    //     const illuminarium::api::CalculatedPoint *get_calc_points_direct() const { return m_calc_points_direct; }
-    //     illuminarium::api::CalculatedPoint *get_calc_points_direct() { return m_calc_points_direct; }
-    //     const illuminarium::api::CalculatedPoint *get_calc_points_photon() const { return m_calc_points_photon; }
-    //     illuminarium::api::CalculatedPoint *get_calc_points_photon() { return m_calc_points_photon; }
-
-public:
-#ifdef _OLD
-    bool create(CalcSurface *surface, const primitive::Mesh *geom, primitive::Mesh *calc, const material &mtl);
-#endif
-
-    // bool create_geometry(const Geometry *geometry, const material &mtl);
-    // bool create_calc_geometry(Geometry *geometry);
-
-    void exchangeCalc();
-    bool adjustColor(color4f &min, color4f &max) const;
-    bool normalizeColor(color4f &color);
-    void setCalculated();
-    void initCalcVbo(bool on);
 };
 
 namespace
@@ -1132,80 +1066,63 @@ namespace
     }
 }
 
-void applyMaterialToPoint(const material &mtl, color4f &c, color3f &vs, color3f &vd)
+struct material
 {
-    const color4f &color = mtl.color;
-    const u32 type = mtl.type;
-    const float &Refl = mtl.Refl;
-    const float &Kspec_refl = mtl.Kspec_refl;
-    const color4f lamp_color(0.0f, 0.0f, 0.0f); //  цвет источника
+    color4f color; // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
 
-    if (type == 1) //  Painted
-    {
-        float Ys = Refl * Kspec_refl;
-        float Yd = Refl * (1 - Ys);
-        color3f diff(color);
-        color3f spec(lamp_color);
-        changeLuminance2(diff, Yd);
-        changeLuminance2(spec, Ys);
-        c = vd * diff + vs * spec;
-    }
-    else // Metallic && Transparent
-    {
-        color3f vs = vd + vs;
-        c = vs * color;
-    }
-}
+    color3f cl; // linear specular Y RGB[0,1]
+    color3f cd; // linear diffuse Y RGB[0,1]
+    color3f cs; // linear sum Y RGB[0,1]
 
-float getYfromMaterialProps(const material &mtl)
-{
-    float Y;
-    float K;
-    const u32 &type = mtl.type;
-    const float &Refl = mtl.Refl;
-    const float &Kspec_refl = mtl.Kspec_refl;
-    const float &Trans = mtl.Trans;
-    switch (type)
+    u32 type;         // 0 - Metallic;  1 - Painted; 2 - Transparent;
+    float Refl;       // Reflection factor        [0,0.9]
+    float Kspec_refl; // Reflective coating       [0,1]
+    float Trans;      // Degree of transmission   [0,1]
+    float N;          // Refractive index         [1,2]
+    float Shin;       // Shininness               [1,128]
+
+public:
+    void prepareColors()
     {
-    case 0: // Metallic:
-        Y = Refl;
-        break;
-    case 1: // Painted:
-        K = Kspec_refl == 1 ? 0 : Kspec_refl * Refl;
-        Y = (Refl - K) / (1 - K);
-        break;
-    case 2: // Transparent:
-        if (Refl == 0)
+        const color4f &color = color;
+        const color4f lamp_color(0.0f, 0.0f, 0.0f); //  цвет источника
+
+        float Y;
+        float K;
+
+        if (type == 0) // Metallic
         {
-            Y = Trans;
+            Y = Refl;
+            changeLuminance2(cs, Y);
         }
-        else
+        else if (type == 1) //  Painted
         {
-            K = Trans / Refl;
-            Y = Refl * (1 + K);
+            float Ys = Refl * Kspec_refl;
+            float Yd = Refl * (1 - Ys);
+            cl = color3f(lamp_color);
+            cd = color3f(color);
+            changeLuminance2(cd, Yd);
+            changeLuminance2(cl, Ys);
         }
-        break;
+        else if (type == 2) //  Transparent
+        {
+            if (Refl == 0)
+            {
+                Y = Trans;
+            }
+            else
+            {
+                K = Trans / Refl;
+                Y = Refl * (1 + K);
+            }
+            changeLuminance2(cs, Y);
+        }
     }
-    return Y;
-}
+};
 
-void checkMaterial(const material &mtl)
-{
-    const color4f &color = mtl.color;
-    const u32 &type = mtl.type;
-    const float &Refl = mtl.Refl;
-
-    color3f c = color3f(color.r, color.g, color.b); // sRGB
-    float Y = getYfromMaterialProps(mtl);
-    checkMaterialColor(c, Y);
-
-    //   return c;
-}
-
-color3f color_normalize(color3f &color, float nmv)
+void color_normalize(color4f &c, float nmv)
 {
     nmv /= 3;
-    color3f c(color);
     float mx = gre_max(c.r, gre_max(c.g, c.b));
     if (mx > nmv)
     {
@@ -1219,22 +1136,33 @@ color3f color_normalize(color3f &color, float nmv)
         c.g /= nmv;
         c.b /= nmv;
     }
-    return c;
 }
 
-bool PuryaMesh::normalizeColor(const color4f &color, float mvt)
+void applyMaterialToPoint(const material &mtl, color4f &c, color3f &vl, color3f &vd)
+{
+    const color4f &color = mtl.color;
+    const u32 type = mtl.type;
+
+    if (type == 1) //  Painted
+    {
+        c = vd * mtl.cd + vl * mtl.cl;
+    }
+    else // Metallic && Transparent
+    {
+        c = (vd + vl) * mtl.cs;
+    }
+}
+
+bool PuryaMesh::normalizeColor2(float mvt)
 {
     if (m_calc_points_count)
     {
         // mvt - максимальное значение (user), после которого считаем все белым (или макс. насыщенность)...
-
         float sum(0.0f);
         float mx(0.0f);
         float Y(0);
-
-        const material &mtl = m_calc_mesh->getMaterial();
-        // Получить коэффициенты материала
-        checkMaterial(mtl);
+        material &mtl = m_calc_mesh->getMaterial();
+        mtl.prepareColors(); // Подготовить цвета материала
         vertex *v(nullptr);
         color3f ic;
         for (u32 i = 0; i < m_calc_points_count; ++i)
@@ -1243,27 +1171,20 @@ bool PuryaMesh::normalizeColor(const color4f &color, float mvt)
             color4f &c = v->c;   // цвет который необходимо расчитать для цветного режима
             color4f &cg = v->cg; // цвет который необходимо расчитать для градаций серого режима
 
-            color3f &vs = v->vs;  // прямая составляющая освещенности
+            color3f &vl = v->vl;  // прямая составляющая освещенности
             color3f &vd = v->vd;  // диффузная состовляющая освещенности
-            color3f vs = vd + vs; // суммарная освещенность
+            color3f vs = vd + vl; // суммарная освещенность
 
-            // Расчет для градаций серого (тут материал не учитываем )
+            // Расчет для градаций серого (тут материал не учитываем, также как в псевдоцветах )
             Y = (vs.r + vs.g + vs.b) / 3.0f;
             cg.set(Y, Y, Y);
-            // Нормируем
-            cg = color_normalize(color3f(cg), mvt);
-            // Применяем логарифмический контраст
-            convert(cg, 8.0f);
+            color_normalize(cg, mvt); // Нормируем
+            convert(cg, 8.0f);        // Применяем логарифмический контраст
 
-            // Расчет для расчетного отображения
-            // Нормируем
-            vs = color_normalize(vs, mvt);
-            vd = color_normalize(vd, mvt);
-            // Применяем материал (реализуем последнее отражение в экран)
-            applyMaterialToPoint(mtl, c, vs, vd);
-
-            // Применяем фзиологический контраст
-            convert(c);
+            // Расчет для обычного отображения
+            applyMaterialToPoint(mtl, c, vl, vd); // Применяем материал (реализуем последнее отражение в экран)
+            color_normalize(c, mvt);              // Нормируем
+            convert(c);                           // Применяем физиологический контраст
         }
         return true;
     }
