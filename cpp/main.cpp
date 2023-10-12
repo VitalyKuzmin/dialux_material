@@ -1053,11 +1053,11 @@ namespace
         {
             if (b > 0)
             {
-                Ynew = Y2Log(Y, b);
+                Ynew = Y2Log(Y, b); // логарифмический контраст
             }
             else
             {
-                Ynew = Y2LS(Y) * 0.01f;
+                Ynew = Y2LS(Y) * 0.01f; // фииологический контраст
             }
 
             color *= Ynew / Y;
