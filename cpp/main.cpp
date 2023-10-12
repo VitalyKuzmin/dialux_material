@@ -958,16 +958,17 @@ struct material
 {
     color4f color; // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
 
-    color3f cl; // linear specular Y RGB[0,1]
-    color3f cd; // linear diffuse Y RGB[0,1]
-    color3f cs; // linear sum Y RGB[0,1]
-
     u32 type;         // 0 - Metallic;  1 - Painted; 2 - Transparent;
     float Refl;       // Reflection factor        [0,0.9]
     float Kspec_refl; // Reflective coating       [0,1]
     float Trans;      // Degree of transmission   [0,1]
     float N;          // Refractive index         [1,2]
     float Shin;       // Shininness               [1,128]
+
+    // Calc Params
+    color3f cl; // linear specular Y RGB[0,1]
+    color3f cd; // linear diffuse Y RGB[0,1]
+    color3f cs; // linear sum Y RGB[0,1]
 
 public:
     void prepareColors()
