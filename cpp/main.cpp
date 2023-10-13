@@ -768,7 +768,7 @@ int main()
 
         PuryaMesh mesh = PuryaMesh();
 
-        // // Create material
+        // Create material
         material mat = material();
         mat.color = color3f(0.2f, 1.0f, 0.3f);
         mat.type = 0;
@@ -778,13 +778,14 @@ int main()
         mat.show();
         mesh.setMaterial(mat);
 
-        // // Create mesh point
+        // Create mesh point
         u32 p_count = 5;
         vertex point = vertex();
         point.vl = color3f(100.0f, 200.0f, 300.0f);
         point.vd = color3f(60.0f, 70.0f, 90.0f);
         mesh.setPoints(point, p_count);
-        // // Calc
+
+        // Calc
         float mvt = 1000.0f; // max lux point (лм)
         mesh.normalizeColor2(mvt);
         mesh.show();
