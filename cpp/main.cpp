@@ -218,19 +218,22 @@ void changeLuminance2(color3f &rgb, const float &Ynew)
     rgb.b = color[2];
 };
 
-void checkMaterialColor(color3f &rgb, const float &Y)
+void checkMaterialColor(const color4f &c, color3f &rgb, const float &Y)
 {
-    float color[3];
-
-    // sRGB to linear RGB --------------------------------
-    color[0] = toLinear(rgb.r);
-    color[1] = toLinear(rgb.g);
-    color[2] = toLinear(rgb.b);
-
-    float sum = K_R * color[0] + K_G * color[1] + K_B * color[2];
+    float sum = K_R * rgb.r + K_G * rgb.g + K_B * rgb.b;
     if (sum != Y)
     {
+        float color[3];
+
+        // sRGB to linear RGB --------------------------------
+        color[0] = toLinear(c.r);
+        color[1] = toLinear(c.g);
+        color[2] = toLinear(c.b);
+
         changeY(color, Y);
+        rgb.r = color[0];
+        rgb.g = color[1];
+        rgb.b = color[2];
     }
 };
 
@@ -988,22 +991,18 @@ public:
 
         if (type == 0) // Metallic
         {
-            cs = color3f(color);
             Y = Refl;
-            changeLuminance2(cs, Y);
+            checkMaterialColor(color, cs, Y);
         }
         else if (type == 1) //  Painted
         {
             float Ys = Refl * Kspec_refl;
             float Yd = Refl * (1 - Ys);
-            cl = color3f(lamp_color);
-            cd = color3f(color);
-            changeLuminance2(cd, Yd);
-            changeLuminance2(cl, Ys);
+            checkMaterialColor(color, cd, Y);
+            checkMaterialColor(lamp_color, cl, Y);
         }
         else if (type == 2) //  Transparent
         {
-            cs = color3f(color);
             if (Refl == 0)
             {
                 Y = Trans;
@@ -1013,7 +1012,7 @@ public:
                 K = Trans / Refl;
                 Y = Refl * (1 + K);
             }
-            changeLuminance2(cs, Y);
+            checkMaterialColor(color, cs, Y);
         }
     }
 };
