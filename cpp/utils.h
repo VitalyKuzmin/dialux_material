@@ -156,6 +156,19 @@ struct vertex3f
         cout << "\n";
     }
 
+    void show_point()
+    {
+        cout << "Point---------------\n";
+        cout << "vl";
+        vl.show();
+        cout << "\n";
+
+        cout << "vd";
+        vd.show();
+        cout << "\n";
+        cout << "\n";
+    }
+
     vertex3f(){};
 
     void set(color3f VL, color3f VD)
@@ -255,6 +268,7 @@ struct material
 
         cout << "cs: ";
         cs.show();
+        cout << "\n";
         cout << "\n";
     }
 };

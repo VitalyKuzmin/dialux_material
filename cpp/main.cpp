@@ -632,8 +632,8 @@ public:
             cout << i;
             cout << "\n";
             points[i]->show();
-            cout << " ";
         }
+        cout << "\n";
     }
 };
 
@@ -783,6 +783,7 @@ int main()
         vertex point = vertex();
         point.vl = color3f(100.0f, 200.0f, 300.0f);
         point.vd = color3f(60.0f, 70.0f, 90.0f);
+        point.show_point();
         mesh.setPoints(point, p_count);
 
         // Calc
