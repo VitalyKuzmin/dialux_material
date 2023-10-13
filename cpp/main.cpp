@@ -1041,7 +1041,7 @@ void applyMaterialToPoint(const material &mtl, color4f &c, color3f &vl, color3f 
     const color4f &color = mtl.color;
     const u32 type = mtl.type;
 
-    if (type == 1) //  Painted
+    if (type == 1) // Painted
     {
         c = vd * mtl.cd + vl * mtl.cl;
     }
