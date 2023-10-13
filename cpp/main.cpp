@@ -988,6 +988,7 @@ public:
 
         if (type == 0) // Metallic
         {
+            cs = color3f(color);
             Y = Refl;
             changeLuminance2(cs, Y);
         }
@@ -1002,6 +1003,7 @@ public:
         }
         else if (type == 2) //  Transparent
         {
+            cs = color3f(color);
             if (Refl == 0)
             {
                 Y = Trans;
