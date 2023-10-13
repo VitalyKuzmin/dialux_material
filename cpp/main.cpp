@@ -76,6 +76,13 @@ void RGBfromLinear(color3f &rgb)
     rgb.b = fromLinear(rgb.b);
 }
 
+void RGBfromLinear(color4f &rgb)
+{
+    rgb.r = fromLinear(rgb.r);
+    rgb.g = fromLinear(rgb.g);
+    rgb.b = fromLinear(rgb.b);
+}
+
 // Constants RGB -> Y (https://en.wikipedia.org/wiki/Relative_luminance)
 const float K_R = 0.2126;
 const float K_G = 0.7152;
@@ -1069,11 +1076,13 @@ bool PuryaMesh::normalizeColor2(float mvt)
             cg.set(Y, Y, Y);
             color_normalize(cg, mvt); // Нормируем
             convert(cg, 8.0f);        // Применяем логарифмический контраст
+            RGBfromLinear(cg);        // Преобразуем в sRGB цвет
 
             // Расчет для обычного отображения
             applyMaterialToPoint(mtl, c, vl, vd); // Применяем материал (реализуем последнее отражение в экран)
             color_normalize(c, mvt);              // Нормируем
             convert(c);                           // Применяем физиологический контраст
+            RGBfromLinear(c);                     // Преобразуем в sRGB цвет
         }
         return true;
     }
