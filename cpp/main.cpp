@@ -771,7 +771,7 @@ int main()
         // Create material
         material mat = material();
         mat.color = color3f(0.2f, 1.0f, 0.3f);
-        mat.type = 0;
+        mat.type = 1;
         mat.Refl = 0.5f;
         mat.Kspec_refl = 0.5f;
         mat.prepareColors();
