@@ -147,12 +147,12 @@ struct vertex3f
 
     void show()
     {
-        cout << "c";
-        c.show();
+        cout << "cg";
+        cg.show255();
         cout << "\n";
 
-        cout << "cg";
-        cg.show();
+        cout << "c";
+        c.show255();
         cout << "\n";
     }
 
@@ -239,7 +239,7 @@ struct material
 
         cout << "Material--------------\n";
         cout << "color: ";
-        color.show();
+        color.show255();
         cout << "\n";
 
         cout << "type: ";

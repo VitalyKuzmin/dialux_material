@@ -538,7 +538,7 @@ public:
 void material::prepareColors()
 {
     const color4f &color = color;
-    const color4f lamp_color(0.0f, 0.0f, 0.0f); //  цвет источника
+    const color4f lamp_color(1.0f, 1.0f, 1.0f); //  цвет источника
 
     float Y;
     float K;
@@ -770,7 +770,7 @@ int main()
 
         // Create material
         material mat = material();
-        mat.color = color3f(0.2f, 1.0f, 0.3f);
+        mat.color = color3f(0.2f, 1.0f, 0.4f);
         mat.type = 1;
         mat.Refl = 0.5f;
         mat.Kspec_refl = 0.5f;
@@ -779,10 +779,10 @@ int main()
         mesh.setMaterial(mat);
 
         // Create mesh point
-        u32 p_count = 5;
+        u32 p_count = 1;
         vertex point = vertex();
-        point.vl = color3f(100.0f, 200.0f, 300.0f);
-        point.vd = color3f(60.0f, 70.0f, 90.0f);
+        point.vl = color3f(100.0f, 200.0f, 200.0f);
+        point.vd = color3f(20.0f, 30.0f, 60.0f);
         point.show_point();
         mesh.setPoints(point, p_count);
 
