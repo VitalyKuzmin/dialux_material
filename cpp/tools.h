@@ -220,6 +220,21 @@ void checkMaterialColor(const color4f &c, color3f &rgb, const float &Y)
     }
 };
 
+void checkMaterialColor2(const color4f &c, color3f &rgb, const float &Ynew)
+{
+    float Y = K_R * rgb.r + K_G * rgb.g + K_B * rgb.b;
+    if (abs(Y - Ynew) > 0.001)
+    {
+        // sRGB to linear RGB --------------------------------
+        rgb.r = toLinear(c.r);
+        rgb.g = toLinear(c.g);
+        rgb.b = toLinear(c.b);
+
+        rgb *= Ynew / Y;
+        color_check(rgb);
+    }
+};
+
 // Получить цвет пикселя из прямой и отраженной составляющей луча падающий на определенный материал
 color3f GetColor(color3f Direct, color3f Photon, float Ymax, color3f diffuse, color3f specular, color3f transmission)
 {
@@ -376,17 +391,19 @@ namespace
     }
 }
 
-void applyMaterialToPoint(const material &mtl, color4f &c, color3f &vl, color3f &vd)
+void applyMaterialToPoint(vertex *v, const material &mtl)
 {
     const color4f &color = mtl.color;
     const u32 &type = mtl.type;
 
-    if (type == 1) // Painted
-    {
-        c = vd * mtl.cd + vl * mtl.cl;
-    }
-    else // Metallic && Transparent
-    {
-        c = (vd + vl) * mtl.cs;
-    }
+    v->c = v->vs * mtl.cd;
+
+    // if (type == 1) // Painted
+    // {
+    //     c = vd * mtl.cd+ vl * mtl.cl
+    // }
+    // else // Metallic && Transparent
+    // {
+    //     c = (vd + vl) * mtl.cs;
+    // }
 }

@@ -537,36 +537,46 @@ public:
 
 void material::prepareColors()
 {
-    const color4f &color = color;
-    const color4f lamp_color(1.0f, 1.0f, 1.0f); //  цвет источника
 
-    float Y;
-    float K;
+    // const color4f lamp_color(1.0f, 1.0f, 1.0f); //  цвет источника
 
     if (type == 0) // Metallic
     {
-        Y = Refl;
-        checkMaterialColor(color, cs, Y);
+        // float Ys = Refl * Kspec_refl;
+        float Yd = Refl * (1 - Kspec_refl);
+        checkMaterialColor(color, cd, Yd);
+
+        // checkMaterialColor2(color, cs, Ys + Yd);
+        //  checkMaterialColor2(color, cl, Ys);
+        // checkMaterialColor(color, cs, Y);
+        //  changeLuminance(diff, Yd);
+        //  changeLuminance(diff, Ys);
+        //  amb = spec;
     }
-    else if (type == 1) //  Painted
+    else if (type == 1) // Painted
     {
-        float Ys = Refl * Kspec_refl;
-        float Yd = Refl * (1 - Ys);
-        checkMaterialColor(color, cd, Ys);
-        checkMaterialColor(lamp_color, cl, Yd);
+
+        // float Ys = Refl * Kspec_refl;
+        // float Yd = Refl * (1 - Ys);
+        float Yd = Refl * (1 - Refl * Kspec_refl);
+        checkMaterialColor(color, cd, Yd);
+
+        // checkMaterialColor2(lamp_color, cl, Ys);
+        // cs = cl + cd;
+        //  checkMaterialColor(color, cs, Y);
+        //  changeLuminance(diff, Yd);
+        //  spec = color3f(0, 0, 0);
+        //  changeLuminance(spec, Ys); // grayscale
+        //  amb = spec;
     }
-    else if (type == 2) //  Transparent
+    else if (type == 2) // Transparent
     {
-        if (Refl == 0)
-        {
-            Y = Trans;
-        }
-        else
-        {
-            K = Trans / Refl;
-            Y = Refl * (1 + K);
-        }
-        checkMaterialColor(color, cs, Y);
+        cs = color4f(0.0f, 0.0f, 0.0f);
+        // float Y = Refl + Trans;
+        //  diff.set(0, 0, 0);
+        //  changeLuminance(spec, mRefl);
+        //  changeLuminance(amb, Y);
+        //  opacity = Trans / Y;
     }
 }
 
@@ -705,10 +715,10 @@ public:
                 RGBfromLinear(cg);        // Преобразуем в sRGB цвет
 
                 // Расчет для обычного отображения
-                applyMaterialToPoint(mtl, c, vl, vd); // Применяем материал (реализуем последнее отражение в экран)
-                color_normalize(c, mvt);              // Нормируем
-                convert(c);                           // Применяем физиологический контраст
-                RGBfromLinear(c);                     // Преобразуем в sRGB цвет
+                applyMaterialToPoint(v, mtl); // Применяем материал (реализуем последнее отражение в экран)
+                color_normalize(c, mvt);      // Нормируем
+                convert(c);                   // Применяем физиологический контраст
+                RGBfromLinear(c);             // Преобразуем в sRGB цвет
             }
             return true;
         }

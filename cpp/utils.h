@@ -144,6 +144,7 @@ struct vertex3f
 
     color3f vl; // прямая составляющая освещенности
     color3f vd; // диффузная состовляющая освещенности
+    color3f vs; // суммараная освещенность
 
     void show()
     {
@@ -181,6 +182,7 @@ struct vertex3f
     {
         vl = v.vl;
         vd = v.vd;
+        vs = vd + vl;
         c = v.c;
         cg = v.cg;
         cr = v.cr;
