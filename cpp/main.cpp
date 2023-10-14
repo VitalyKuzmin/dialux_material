@@ -543,7 +543,8 @@ void material::prepareColors()
     if (type == 0) // Metallic
     {
         // float Ys = Refl * Kspec_refl;
-        float Yd = Refl * (1 - Kspec_refl);
+        // float Yd = Refl * (1 - Kspec_refl);
+        float Yd = Refl;
         checkMaterialColor(color, cd, Yd);
 
         // checkMaterialColor2(color, cs, Ys + Yd);
@@ -577,7 +578,7 @@ void material::prepareColors()
         //   diff.set(0, 0, 0);
         //   changeLuminance(spec, mRefl);
         //   changeLuminance(amb, Y);
-        //   opacity = Trans / Y;
+        opacity = Trans / Y;
     }
 }
 
