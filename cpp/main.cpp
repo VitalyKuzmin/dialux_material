@@ -571,12 +571,13 @@ void material::prepareColors()
     }
     else if (type == 2) // Transparent
     {
-        cs = color4f(0.0f, 0.0f, 0.0f);
-        // float Y = Refl + Trans;
-        //  diff.set(0, 0, 0);
-        //  changeLuminance(spec, mRefl);
-        //  changeLuminance(amb, Y);
-        //  opacity = Trans / Y;
+        float Y = Refl;
+        checkMaterialColor(color, cd, Y);
+        //  float Y = Refl + Trans;
+        //   diff.set(0, 0, 0);
+        //   changeLuminance(spec, mRefl);
+        //   changeLuminance(amb, Y);
+        //   opacity = Trans / Y;
     }
 }
 
