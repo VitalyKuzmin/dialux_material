@@ -176,12 +176,6 @@ struct vertex3f
 
     vertex3f(){};
 
-    void set(color3f VL, color3f VD)
-    {
-        vl = VL;
-        vd = VD;
-    }
-
     vertex3f(const vertex3f &v)
     {
         vl = v.vl;
