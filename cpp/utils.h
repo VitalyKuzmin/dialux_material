@@ -200,7 +200,7 @@ struct material
     color3f cl; // linear specular Y RGB[0,1]
     color3f cd; // linear diffuse Y RGB[0,1]
     color3f cs; // linear sum Y RGB[0,1]
-    float opacity;
+    float opacity = 0.0f;
 
     material(){
 
