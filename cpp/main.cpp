@@ -341,13 +341,13 @@ public:
     }
 
     // Update
-    float updateRGB()
+    void updateRGB()
     {
         float Y = getYfromProps();
         changeLuminance(mColor, Y);
     }
 
-    float updateProps()
+    void updateProps()
     {
         float Y = getYfromRgb();
         float K = mKoeff;
@@ -775,5 +775,6 @@ int main()
         float mvt = 1000.0f; // max lux point (лм)
         mesh.normalizeColor2(mvt);
         mesh.show();
+		system("pause");
     }
 }
