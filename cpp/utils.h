@@ -167,10 +167,6 @@ struct vertex3f
         cout << "vd";
         vd.show();
         cout << "\n";
-
-        cout << "vs";
-        vs.show();
-        cout << "\n";
         cout << "\n";
     }
 
