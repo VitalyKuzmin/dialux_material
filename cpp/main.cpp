@@ -550,7 +550,7 @@ void material::prepareColors()
     else if (type == 2) // Transparent
     {
         Y = Refl + Trans;
-        checkMaterialColor(color, cs, Refl);
+        checkMaterialColor(color, cs, Y);
         opacity = Trans / Y;
     }
 }
@@ -775,6 +775,6 @@ int main()
         float mvt = 1000.0f; // max lux point (лм)
         mesh.normalizeColor2(mvt);
         mesh.show();
-		system("pause");
+        system("pause");
     }
 }
