@@ -396,7 +396,7 @@ void applyMaterialToPoint(vertex *v, const material &mtl)
     const color4f &color = mtl.color;
     const u32 &type = mtl.type;
 
-    v->c = v->vs * mtl.cd;
+    v->c = v->vs * mtl.cs;
 
     // if (type == 1) // Painted
     // {

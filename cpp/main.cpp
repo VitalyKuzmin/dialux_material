@@ -323,26 +323,18 @@ public:
     float getYfromProps()
     {
         float Y;
-        float K;
         switch (mType)
         {
         case Type::Metallic:
             Y = mRefl;
             break;
         case Type::Painted:
-            K = mKspec_refl == 1 ? 0 : mKspec_refl * mRefl;
-            Y = (mRefl - K) / (1 - K);
+            // K = mKspec_refl * mRefl;
+            // Y = (mRefl - K) / (1 - K);
+            Y = mRefl * (1 - mKspec_refl) / (1 - mKspec_refl * mRefl);
             break;
         case Type::Transparent:
-            if (mRefl == 0)
-            {
-                Y = mTrans;
-            }
-            else
-            {
-                K = mTrans / mRefl;
-                Y = mRefl * (1 + K);
-            }
+            Y = mRefl + mTrans;
             break;
         }
         return Y;
@@ -539,45 +531,26 @@ void material::prepareColors()
 {
 
     // const color4f lamp_color(1.0f, 1.0f, 1.0f); //  цвет источника
-
+    float Y;
     if (type == 0) // Metallic
     {
         // float Ys = Refl * Kspec_refl;
         // float Yd = Refl * (1 - Kspec_refl);
-        float Yd = Refl;
-        checkMaterialColor(color, cd, Yd);
-
-        // checkMaterialColor2(color, cs, Ys + Yd);
-        //  checkMaterialColor2(color, cl, Ys);
-        // checkMaterialColor(color, cs, Y);
-        //  changeLuminance(diff, Yd);
-        //  changeLuminance(diff, Ys);
-        //  amb = spec;
+        Y = Refl;
+        checkMaterialColor(color, cs, Y);
     }
     else if (type == 1) // Painted
     {
 
         // float Ys = Refl * Kspec_refl;
         // float Yd = Refl * (1 - Ys);
-        float Yd = Refl * (1 - Refl * Kspec_refl);
-        checkMaterialColor(color, cd, Yd);
-
-        // checkMaterialColor2(lamp_color, cl, Ys);
-        // cs = cl + cd;
-        //  checkMaterialColor(color, cs, Y);
-        //  changeLuminance(diff, Yd);
-        //  spec = color3f(0, 0, 0);
-        //  changeLuminance(spec, Ys); // grayscale
-        //  amb = spec;
+        Y = Refl * (1 - Kspec_refl) / (1 - Kspec_refl * Refl);
+        checkMaterialColor(color, cs, Y);
     }
     else if (type == 2) // Transparent
     {
-        float Y = Refl;
-        checkMaterialColor(color, cd, Y);
-        //  float Y = Refl + Trans;
-        //   diff.set(0, 0, 0);
-        //   changeLuminance(spec, mRefl);
-        //   changeLuminance(amb, Y);
+        Y = Refl + Trans;
+        checkMaterialColor(color, cs, Refl);
         opacity = Trans / Y;
     }
 }
