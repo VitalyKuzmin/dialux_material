@@ -61,7 +61,7 @@ function changeY(color, Ynew) {
     }
 
 
-    
+
     var sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
     //sum*=0.9;
     var coeff = Ynew / sum;
@@ -71,16 +71,16 @@ function changeY(color, Ynew) {
     for (var j = 0; j < 3; j++) {
         color[j] *= coeff;
     }
-    
-    
+
+
     var index = rgb_max_i(color);
 
-    
-    
+
+
     if (color[index] > 1) {
         color[index] = 1;
         sum = 0;
-        
+
         for (var j = 0; j < 3; j++) {
             if (j == index) continue;
             sum += color[j] * K[j]
@@ -93,7 +93,7 @@ function changeY(color, Ynew) {
         }
 
 
-        
+
         var index2 = rgb_max_i(color, index);
         //color[index2] *= coeff;
         if (color[index2] > 1) {
@@ -113,7 +113,7 @@ function changeY(color, Ynew) {
 
         }
 
-    } 
+    }
 
     return color;
 }
@@ -379,19 +379,10 @@ class MaterialMaster {
                 Y = Refl;
                 break;
             case "Painted":
-                var K = Kspec_refl == 1 ? 0 : Kspec_refl * Refl;
-                Y = (Refl - K) / (1 - K);
-
-                //Y = mRefl * (1 - Kspec_refl) / (1 - Kspec_refl * Refl);
+                Y = Refl * (1 - Kspec_refl) / (1 - Kspec_refl * Refl);
                 break;
             case "Transparent":
                 Y = Refl + Trans;
-                // if (Refl == 0) {
-                //     Y = Trans;
-                // } else {
-                //     var K = Trans / Refl;
-                //     Y = Refl * (1 + K);
-                // }
                 break;
         }
         return Y;

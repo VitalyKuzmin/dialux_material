@@ -329,8 +329,6 @@ public:
             Y = mRefl;
             break;
         case Type::Painted:
-            // K = mKspec_refl * mRefl;
-            // Y = (mRefl - K) / (1 - K);
             Y = mRefl * (1 - mKspec_refl) / (1 - mKspec_refl * mRefl);
             break;
         case Type::Transparent:
