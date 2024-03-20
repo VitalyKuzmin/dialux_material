@@ -49,6 +49,8 @@ function fromLinear(value) {
 
 // Change rgb by Luminance ----------------------------------------------------------------
 
+
+
 function changeY(color, Ynew) {
     const K = [K_R, K_G, K_B]
 
@@ -58,26 +60,48 @@ function changeY(color, Ynew) {
             color[j] = 0.000000001;
     }
 
+
+    
     var sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
+    //sum*=0.9;
     var coeff = Ynew / sum;
+
+
+
+    for (var j = 0; j < 3; j++) {
+        color[j] *= coeff;
+    }
+    
+    
     var index = rgb_max_i(color);
-    color[index] *= coeff;
+
+    
+    
     if (color[index] > 1) {
         color[index] = 1;
         sum = 0;
+        
         for (var j = 0; j < 3; j++) {
             if (j == index) continue;
             sum += color[j] * K[j]
         }
-        coeff = (Ynew - K[index]) / sum;
+        coeff = (Ynew - K[index]) / sum;  //color[index] = 1
+
+        for (var j = 0; j < 3; j++) {
+            if (j == index) continue;
+            color[j] *= coeff;
+        }
+
+
+        
         var index2 = rgb_max_i(color, index);
-        color[index2] *= coeff;
+        //color[index2] *= coeff;
         if (color[index2] > 1) {
             color[index2] = 1;
             var index3;
             for (var j = 0; j < 3; j++) {
                 if (j == index || j == index2) continue;
-                sum += color[j] * K[j]
+                sum = color[j] * K[j]
                 index3 = j;
             }
             coeff = (Ynew - K[index] - K[index2]) / sum;
@@ -88,18 +112,8 @@ function changeY(color, Ynew) {
                 color[index3] = 1;
 
         }
-        else {
-            for (var j = 0; j < 3; j++) {
-                if (j == index || j == index2) continue;
-                color[j] *= coeff;
-            }
-        }
-    } else {
-        for (var j = 0; j < 3; j++) {
-            if (j == index) continue;
-            color[j] *= coeff;
-        }
-    }
+
+    } 
 
     return color;
 }
@@ -145,7 +159,7 @@ function rgb_max_i(arr, no_index = -1) {
     var index = 0;
 
     for (var i = 0; i < arr.length; i++) {
-        if (i == no_index) continue;
+        if (i == no_index) continue; //arr[i] == 1.0
         if (arr[i] > max) {
             max = arr[i];
             index = i;
@@ -246,7 +260,8 @@ class MaterialMaster {
 
         if (Color !== undefined) {
             Props.Color.upd = false;
-            Props.Color.setValue(Color);
+            //Props.Color.setValue(Color);
+            //this.Color = Color;
             return
         }
 
@@ -366,14 +381,17 @@ class MaterialMaster {
             case "Painted":
                 var K = Kspec_refl == 1 ? 0 : Kspec_refl * Refl;
                 Y = (Refl - K) / (1 - K);
+
+                //Y = mRefl * (1 - Kspec_refl) / (1 - Kspec_refl * Refl);
                 break;
             case "Transparent":
-                if (Refl == 0) {
-                    Y = Trans;
-                } else {
-                    var K = Trans / Refl;
-                    Y = Refl * (1 + K);
-                }
+                Y = Refl + Trans;
+                // if (Refl == 0) {
+                //     Y = Trans;
+                // } else {
+                //     var K = Trans / Refl;
+                //     Y = Refl * (1 + K);
+                // }
                 break;
         }
         return Y;

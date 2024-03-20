@@ -101,6 +101,7 @@ void toGray(color3f &rgb)
     rgb = color3f(Y, Y, Y);
 }
 
+
 void changeY(float *color, const float &Ynew)
 {
     const float K[3] = {K_R, K_G, K_B};
@@ -114,8 +115,11 @@ void changeY(float *color, const float &Ynew)
     // Change Luminance ---------------------------------------------------
     float sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
     float coeff = Ynew / sum;
+
+    for (int j = 0; j < 3; j++) {
+        color[j] *= coeff;
+    }
     unsigned int index = rgb_max_i(color);
-    color[index] *= coeff;
     if (color[index] > 1)
     {
         color[index] = 1;
@@ -127,8 +131,13 @@ void changeY(float *color, const float &Ynew)
             sum += color[j] * K[j];
         }
         coeff = (Ynew - K[index]) / sum;
+
+        for (int j = 0; j < 3; j++) {
+            if (j == index) 
+                continue;
+            color[j] *= coeff;
+        }
         unsigned int index2 = rgb_max_i(color, index);
-        color[index2] = color[index2] * coeff;
         if (color[index2] > 1)
         {
             color[index2] = 1;
@@ -137,7 +146,7 @@ void changeY(float *color, const float &Ynew)
             {
                 if (j == index || j == index2)
                     continue;
-                sum += color[j] * K[j];
+                sum = color[j] * K[j];
                 index3 = j;
             }
             coeff = (Ynew - K[index] - K[index2]) / sum;
@@ -146,24 +155,6 @@ void changeY(float *color, const float &Ynew)
 
             if (color[index3] > 1)
                 color[index3] = 1;
-        }
-        else
-        {
-            for (int j = 0; j < 3; j++)
-            {
-                if (j == index || j == index2)
-                    continue;
-                color[j] *= coeff;
-            }
-        }
-    }
-    else
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            if (j == index)
-                continue;
-            color[j] *= coeff;
         }
     }
 }
