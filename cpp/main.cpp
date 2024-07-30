@@ -22,6 +22,9 @@ const float K_R = 0.2126;
 const float K_G = 0.7152;
 const float K_B = 0.0722;
 
+
+#define gre_max(a, b) (((a) > (b)) ? (a) : (b))
+
 namespace type
 {
     enum

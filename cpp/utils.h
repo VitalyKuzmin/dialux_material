@@ -4,14 +4,7 @@ using namespace std;
 
 
 
-#define gre_min(a, b) (((a) < (b)) ? (a) : (b))
-#define gre_max(a, b) (((a) > (b)) ? (a) : (b))
-#define gre_abs(a) ((a) < 0 ? -(a) : a)
-#define gre_sqr(x) ((x) * (x))
-
 typedef unsigned int u32;
-
-
 
 
 struct color3f
