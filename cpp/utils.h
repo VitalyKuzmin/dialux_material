@@ -15,7 +15,7 @@ const float K_B = 0.0722;
 typedef unsigned int u32;
 
 
-#define _epsilon 0.000001f
+
 
 struct color3f
 {
