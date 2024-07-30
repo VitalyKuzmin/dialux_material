@@ -47,6 +47,23 @@ function fromLinear(value) {
     return value;
 }
 
+function RGBtoLinear(rgb) {
+    var color = [...rgb];
+    color[0] = toLinear(color[0]);
+    color[1] = toLinear(color[1]);
+    color[2] = toLinear(color[2]);
+    return color;
+}
+
+function RGBfromLinear(rgb) {
+    var color = [...rgb];
+    color[0] = fromLinear(color[0]);
+    color[1] = fromLinear(color[1]);
+    color[2] = fromLinear(color[2]);
+    return color;
+}
+
+
 // Change rgb by Luminance ----------------------------------------------------------------
 
 
@@ -123,20 +140,29 @@ function changeLuminance(rgb, Ynew) {
     var color = [...rgb];
 
     // sRGB to linear RGB
-    color[0] = toLinear(color[0]);
-    color[1] = toLinear(color[1]);
-    color[2] = toLinear(color[2]);
+    color = RGBtoLinear(color);
 
     // Change luminance
     color = changeY(color, Ynew);
 
     // linear RGB to sRGB
-    color[0] = fromLinear(color[0])
-    color[1] = fromLinear(color[1])
-    color[2] = fromLinear(color[2])
+    color = RGBfromLinear(color);
 
     return color;
 }
+
+function partLuminance(rgb, Ypart, Ysum) {
+    var color = [...rgb];
+
+    var k = Ypart / Ysum;
+
+    color[0] = rgb[0] * k;
+    color[1] = rgb[1] * k;
+    color[2] = rgb[2] * k;
+
+
+    return color;
+};
 
 
 // Tools ----------------------------------------------------------------
@@ -360,9 +386,7 @@ class MaterialMaster {
         var color = this.Props.Color.getValue();//this.Color;
         // sRGB to Y
         var Yrgb = [0, 0, 0];
-        Yrgb[0] = toLinear(color[0]);
-        Yrgb[1] = toLinear(color[1]);
-        Yrgb[2] = toLinear(color[2]);
+        Yrgb = RGBtoLinear(color);
 
         return 0.9 * (Yrgb[0] * K_R + Yrgb[1] * K_G + Yrgb[2] * K_B); // 10% идет на поглощение
     }
@@ -441,13 +465,15 @@ class MaterialMaster {
     update(flag = 0) {
         if (flag == 1)
             this.updateProps();
-        else if (flag == 2)
-            this.updateRGB();
+        //else if (flag == 2)
+        //this.updateRGB();
 
         this.render();
     }
 
     // Render
+
+
 
     render() {
         var Props = this.Props;
@@ -456,7 +482,7 @@ class MaterialMaster {
         var Refl = Props.Refl.getValue();
         var Trans = Props.Trans.getValue();
 
-        var color = Props.Color.getValue();
+        var Yrgb = Props.Color.getValue();
 
         var diff, spec, amb;
         var Shin, N, opacity;
@@ -464,8 +490,14 @@ class MaterialMaster {
 
             var Ys = Refl * Kspec_refl;
             var Yd = Refl * (1 - Kspec_refl);
-            diff = changeLuminance(color, Yd);
-            spec = changeLuminance(color, Ys);
+
+            var Ysum = Refl;
+
+            Yrgb = changeY(RGBtoLinear(Yrgb), Ysum);
+
+            diff = RGBfromLinear(partLuminance(Yrgb, Yd, Ysum));
+            spec = RGBfromLinear(partLuminance(Yrgb, Ys, Ysum));
+
             amb = spec;
 
             opacity = 0;
@@ -475,9 +507,14 @@ class MaterialMaster {
         else if (type == "Painted") {
 
             var Ys = Refl * Kspec_refl;
-            var Yd = Refl * (1 - Ys);
-            diff = changeLuminance(color, Yd);
-            spec = changeLuminance([0, 0, 0], Ys); // grayscale
+            var Yd = Refl * (1 - Kspec_refl); // Ys
+
+            var Ysum = Refl;
+
+            Yrgb = changeY(RGBtoLinear(Yrgb), Ysum);
+
+            diff = RGBfromLinear(partLuminance(Yrgb, Yd, Ysum));
+            spec = RGBfromLinear([Ys, Ys, Ys]);  // grayscale
             amb = spec;
 
             opacity = 0;
@@ -486,10 +523,16 @@ class MaterialMaster {
 
         }
         else if (type == "Transparent") {
-            var Y = Refl + Trans;
+            var Ysum = Refl + Trans;
+
+            Yrgb = changeY(RGBtoLinear(Yrgb), Ysum);
             diff = [0, 0, 0];
-            spec = changeLuminance(color, Refl);
-            amb = changeLuminance(color, Y);
+            spec = RGBfromLinear(partLuminance(Yrgb, Refl, Ysum));
+            trans = RGBfromLinear(partLuminance(Yrgb, Trans, Ysum));
+
+            amb = Yrgb;
+
+
 
             opacity = Trans / Y;
             Shin = 40; // примерно
