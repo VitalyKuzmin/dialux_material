@@ -14,6 +14,9 @@ const float K_B = 0.0722;
 
 typedef unsigned int u32;
 
+
+#define _epsilon 0.000001f
+
 struct color3f
 {
 public:
@@ -184,92 +187,3 @@ struct vertex3f
 };
 
 typedef vertex3f vertex;
-
-struct material
-{
-    color4f color; // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
-
-    u32 type;         // 0 - Metallic;  1 - Painted; 2 - Transparent;
-    float Refl;       // Reflection factor        [0,0.9]
-    float Kspec_refl; // Reflective coating       [0,1]
-    float Trans;      // Degree of transmission   [0,1]
-    float N;          // Refractive index         [1,2]
-    float Shin;       // Shininness               [1,128]
-
-    // Calc Params
-    color3f cl; // linear specular Y RGB[0,1]
-    color3f cd; // linear diffuse Y RGB[0,1]
-    color3f cs; // linear sum Y RGB[0,1]
-    float opacity = 0.0f;
-
-    material(){
-
-    };
-
-    material(const material &mat)
-    {
-        set(mat.color, mat.type, mat.Refl, mat.Kspec_refl, mat.Trans, mat.N, mat.Shin);
-    };
-
-    material(const color3f &c, const unsigned int &t, const float &refl,
-             const float &kspec_refl, const float &trans, const float &n, const float &shin)
-    {
-        set(c, t, refl, kspec_refl, trans, n, shin);
-    }
-
-    void set(const color3f &c, const unsigned int &t, const float &refl,
-             const float &kspec_refl, const float &trans, const float &n, const float &shin)
-    {
-        color = color3f(c);
-        type = t;
-        Refl = refl;
-        Kspec_refl = kspec_refl;
-        Trans = trans;
-        N = n;
-        Shin = shin;
-    }
-
-    void prepareColors();
-
-    void show()
-    {
-
-        cout << "Material--------------\n";
-        cout << "color: ";
-        color.show255();
-        cout << "\n";
-
-        cout << "type: ";
-        cout << type;
-        cout << "\n";
-
-        cout << "Refl: ";
-        cout << Refl;
-        cout << "\n";
-
-        cout << "Kspec_refl: ";
-        cout << Kspec_refl;
-        cout << "\n";
-
-        cout << "Trans: ";
-        cout << Trans;
-        cout << "\n";
-
-        cout << "cl: ";
-        cl.show();
-        cout << "\n";
-
-        cout << "cd: ";
-        cd.show();
-        cout << "\n";
-
-        cout << "cs: ";
-        cs.show();
-        cout << "\n";
-
-        cout << "opacity: ";
-        cout << opacity;
-        cout << "\n";
-        cout << "\n";
-    }
-};

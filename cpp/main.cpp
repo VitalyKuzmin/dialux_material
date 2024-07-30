@@ -4,111 +4,156 @@
 #include <vector>
 #include <string>
 
+#include <assert.h>
+
 #include "utils.h"
 #include "tools.h"
 
 using namespace std;
 
-// Classes ---------------------------------------------------------------------
+#define _CALC_TYPE 1 // 0 - old; 1 - new; 2 - color mesh;
+
+
+
+
+namespace type
+{
+    enum
+    {
+        Metallic = 0,
+        Painted = 1,
+        Transparent = 2,
+        Last = 3,
+    };
+}
+
+
 class Material
 {
 public:
-    string Name;
+    color3f diffuse;               // диффузная часть (Y)
+    color3f specular;              // зеркальная часть (Y)
+    color3f transmission;          // пропускание часть (Y)
 
-    color3f diff; // Diffuse color      [0,1]
-    color3f spec; // Specular color     [0,1]
-    color3f amb;  // Ambient color      [0,1]
-    float Tr;     // Transparency       [0,1]
+    color3f diffuse_linear;        // диффузная часть (linear)
+    color3f specular_linear;       // зеркальная часть (linear)
+    color3f transmission_linear;   // пропускание часть (linear)
 
+    // Open GL Phong Shader Params -----------------------------------------------------------------------------
+    color3f diffuse_sRGB;        // диффузная часть (sRGB)
+    color3f specular_sRGB;       // зеркальная часть (sRGB)
+    color3f ambient_sRGB;        // светящаяся часть (sRGB)
+
+
+    float Tr;          // Transparency             [0,1]
     unsigned int Shin; // Shininess                [0,128]
     float N;           // Refractive index         [1,2]
 
-    Material()
-    {
-        Tr = 0;
-        Shin = 0;
-        N = 1;
+public:
+
+    Material() {
+
+        Tr = 0.0f;
+        Shin = 80;
+        N = 1.0f;
     }
 
-    Material(const Material &mat, string name)
+    Material(const color3f& d, const color3f& s, const color3f& t, const color3f& a, const float& shin = 80, const float& tr = 0.0f, const float& n = 1.0f) {
+        init(d,s,t,a,shin,tr,n);
+    }
+     
+    void init(const color3f& d, const color3f& s, const color3f& t, const color3f& a, const float& shin = 80, const float& tr=0.0f, const float& n = 1.0f)
     {
-        this->diff = color3f(mat.diff);
-        this->spec = color3f(mat.spec);
-        this->amb = color3f(mat.amb);
+        // Shader params
+        diffuse_sRGB = d;
+        specular_sRGB = s;
+        ambient_sRGB = a;
+        Tr = tr;
+        Shin = shin;
+        N = n;
 
-        this->Tr = mat.Tr;
-        this->Shin = mat.Shin;
-        this->N = mat.N;
-        this->Name = name;
+        // linear
+        diffuse_linear = utils::to_linear(d);
+        specular_linear = utils::to_linear(s);
+        transmission_linear = utils::to_linear(t);
+
+        // Y
+        diffuse = utils::linear_to_luminance(diffuse_linear);
+        specular = utils::linear_to_luminance(specular_linear);
+        transmission = utils::linear_to_luminance(transmission_linear);
+
+    }
+    bool isValid() const
+    {
+        if (  ((diffuse.r + specular.r + transmission.r) <= 1.0f) && 
+              ((diffuse.g + specular.g + transmission.g) <= 1.0f) && 
+              ((diffuse.b + specular.b + transmission.b) <= 1.0f) && 
+              Tr >= 0.0f && Tr <= 1.0f && Shin >= 0 && Shin <= 128 && N >= 1.0f && N <= 2.0f)
+        {
+            return true;
+        }
+
+        return false;
     }
 
-    // Show ------------------------------------------------------------------------------------------------
     void show()
     {
-
-        // cout << "Render: ";
-        if (!Name.empty())
-            cout << Name << ":\n";
-
-        cout << "diff:";
-        diff.show();
-        cout << ", ";
-
-        cout << "spec:";
-        spec.show();
-        cout << ", ";
-
-        cout << "abs:";
-        amb.show();
-        cout << ", ";
-
-        cout << "Tr:" << Tr;
-        cout << ", ";
-        cout << "Shin:" << Shin;
-        cout << ", ";
-        cout << "n:" << N;
-    }
-
-    //  Show web -------------------------------------------------------------------------------
-
-    string YtoStr(string name, color3f &Yrgb)
-    {
-        return "%22" + name + "%22:" + "[" + to_string(Yrgb.r) + "," + to_string(Yrgb.g) + "," + to_string(Yrgb.b) + "]";
-    }
-
-    string ValueToStr(string name, float val)
-    {
-        return "%22" + name + "%22:" + to_string(val);
-    }
-
-    string ValueToStr(string name, unsigned int &val)
-    {
-        return "%22" + name + "%22:" + to_string(val);
-    }
-
-    void show_web()
-    {
-        string url = "start https://vitalykuzmin.github.io/dialux_material/render.html?params={"; // http://l-i-n.ru/apps/Phong/index.html
-        url += YtoStr("D", diff) + ",";
-        url += YtoStr("S", spec) + ",";
-        url += YtoStr("A", amb) + ",";
-        url += ValueToStr("Tr", Tr) + ",";
-        url += ValueToStr("Sh", Shin) + ",";
-        url += ValueToStr("N", N);
-        url += "}";
-        system(url.c_str());
+        char buff[256];
+        sprintf_s(buff, 255, "diffuse: (%.6f, %.6f, %.6f)", diffuse.r, diffuse.g, diffuse.b);
+        cout << buff << endl;
+        sprintf_s(buff, 255, "specular: (%.6f, %.6f, %.6f)", specular.r, specular.g, specular.b);
+        cout << buff << endl;
+        sprintf_s(buff, 255, "transmission: (%.6f, %.6f, %.6f)", transmission.r, transmission.g, transmission.b);
+        //cout << buff << endl;
+        //sprintf_s(buff, 255, "Shader params:");
+        //cout << buff << endl;
+        //sprintf_s(buff, 255, "diffuse: (%.6f, %.6f, %.6f)", diffuse_sRGB.r, diffuse_sRGB.g, diffuse_sRGB.b);
+        //cout << buff << endl;
+        //sprintf_s(buff, 255, "specular: (%.6f, %.6f, %.6f)", specular_sRGB.r, specular_sRGB.g, specular_sRGB.b);
+        //cout << buff << endl;
+        //sprintf_s(buff, 255, "transmission: (%.6f, %.6f, %.6f)", ambient_sRGB.r, ambient_sRGB.g, ambient_sRGB.b);
+        cout << buff << endl;
+        sprintf_s(buff, 255, "Transparency: (%.6f)", Tr);
+        cout << buff << endl;
+        sprintf_s(buff, 255, "Shininess: (%1i)", Shin);
+        cout << buff << endl;
+        sprintf_s(buff, 255, "N: (%.6f, %.6f, %.6f)", transmission.r, transmission.g, transmission.b);
+        cout << buff << endl;
     }
 };
+
+
+class Materials
+{
+public:
+    std::vector<Material> mMaterials;
+
+    Materials() {}
+
+    void add(Material mat)
+    {
+        mMaterials.push_back(mat);
+    }
+
+    void show()
+    {
+        for (int i = 0; i < mMaterials.size(); i++)
+        {
+            cout << i << ".\n";
+            mMaterials[i].show();
+            cout << "\n";
+        }
+    }
+};
+
+
+
+#if _CALC_TYPE == 0
 
 class MaterialMaster
 {
 public:
-    enum Type
-    {
-        Metallic,
-        Painted,
-        Transparent
-    };
+
 
     // Properties
     color3f mColor;    // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
@@ -116,7 +161,7 @@ public:
     float mKspec_refl; // Reflective coating       [0,1]
     float mTrans;      // Degree of transmission   [0,1]
     float mN;          // Refractive index         [1,2]
-    Type mType;        // Material type
+    u32 mType;        // Material type
 
     float mKoeff; // Koefficient for transition between material types;
 
@@ -130,33 +175,35 @@ public:
         mKspec_refl = 0.0;
         mTrans = 0.0;
         mN = 1.0;
-        mType = Type::Metallic;
+        mType = type::Metallic;
         mKoeff = -1;
     }
 
     // Init
-    void init(float R, float G, float B, Type type, const float &r, const float &k)
+    void init(float R, float G, float B, u32 type, const float& r, const float& k)
     {
+        
         mColor.set(R / 255, G / 255, B / 255);
         SetProps(type, r, k);
+        
     }
 
-    void init(float R, float G, float B, Type type, const float &r, const float &t, const float &n)
+    void init(float R, float G, float B, u32 type, const float& r, const float& t, const float& n)
     {
         mColor.set(R / 255, G / 255, B / 255);
         SetProps(type, r, t, n);
     }
 
-    Material createMaterial(string name)
+    Material getMaterial()
     {
-        return Material(mMaterial, name);
+        return mMaterial;
     }
 
     // Set
-    void SetProps(Type type, const float &r, const float &k)
+    void SetProps(u32 type, const float& r, const float& k)
     {
         mType = type;
-        if (type == Type::Painted || type == Type::Metallic)
+        if (type == type::Painted || type == type::Metallic)
         {
             mRefl = r;
             mKspec_refl = k;
@@ -168,10 +215,10 @@ public:
         update(2);
     }
 
-    void SetProps(Type type, const float &r, const float &t, const float &N)
+    void SetProps(u32 type, const float& r, const float& t, const float& N)
     {
         mType = type;
-        if (type == Type::Transparent)
+        if (type == type::Transparent)
         {
             mRefl = r;
             mTrans = t;
@@ -184,7 +231,7 @@ public:
         update(2);
     }
 
-    void setType(MaterialMaster::Type newType)
+    void setType(u32 newType)
     {
         if (mType == newType)
             return;
@@ -192,7 +239,7 @@ public:
         update(1);
     }
 
-    void setColor(const float &R, const float &G, const float &B)
+    void setColor(const float& R, const float& G, const float& B)
     {
         mColor.set(R / 255, G / 255, B / 255);
         mKoeff = -1;
@@ -211,13 +258,13 @@ public:
             r = 0.9;
 
         mRefl = r;
-        if (mType == Type::Painted)
+        if (mType == type::Painted)
         {
             mKoeff = mRefl * mKspec_refl;
             if (mRefl == 0)
                 mKspec_refl = 0;
         }
-        else if (mType == Type::Transparent)
+        else if (mType == type::Transparent)
         {
             mKoeff = 1.0;
             if (mRefl > (1 - mTrans))
@@ -227,12 +274,12 @@ public:
         update(2);
     }
 
-    void setKspec_refl(float k)
+    void setReflectingCoating(float k)
     {
         if (mKspec_refl == k)
             return;
 
-        if (mType == Type::Transparent)
+        if (mType == type::Transparent)
             return;
 
         if (k < 0)
@@ -243,12 +290,12 @@ public:
 
         mKspec_refl = k;
 
-        if (mType == Type::Metallic)
+        if (mType == type::Metallic)
         {
             mKoeff = mKspec_refl;
             update();
         }
-        else if (mType == Type::Painted)
+        else if (mType == type::Painted)
         {
             mKoeff = mKspec_refl * mRefl;
             update(2);
@@ -260,7 +307,7 @@ public:
         if (mTrans == t)
             return false;
 
-        if (mType != Type::Transparent)
+        if (mType != type::Transparent)
             return false;
 
         if (t < 0)
@@ -283,7 +330,7 @@ public:
 
     void setN(float n)
     {
-        if (mType != Type::Transparent)
+        if (mType != type::Transparent)
             return;
 
         if (n < 1.0)
@@ -297,24 +344,18 @@ public:
         update();
     }
 
-    void setMaterial(const color3f &d, const color3f &s, const color3f &a, const float &tr, const float &shin, const float &n)
+    void setMaterial(const color3f& d, const color3f& s, const color3f& t, const color3f& a, const float& tr, const float& shin, const float& n)
     {
-        mMaterial.diff = d;
-        mMaterial.spec = s;
-        mMaterial.amb = a;
-        mMaterial.Tr = tr;
-        mMaterial.Shin = shin;
-        mMaterial.N = n;
+        mMaterial.init(d,s,t,a,tr,shin,n);
     }
 
     // GetY ----------------------------------------------------------------
     float getYfromRgb()
     {
         color3f Yrgb;
+
         // sRGB to Y
-        Yrgb.r = toLinear(mColor.r) * K_R;
-        Yrgb.g = toLinear(mColor.g) * K_G;
-        Yrgb.b = toLinear(mColor.b) * K_B;
+        Yrgb = to_luminance(mColor);
 
         float Y = 0.9 * Yrgb.sum(); // 10% идет на поглощение
         return Y;
@@ -325,13 +366,13 @@ public:
         float Y;
         switch (mType)
         {
-        case Type::Metallic:
+        case type::Metallic:
             Y = mRefl;
             break;
-        case Type::Painted:
+        case type::Painted:
             Y = mRefl * (1 - mKspec_refl) / (1 - mKspec_refl * mRefl);
             break;
-        case Type::Transparent:
+        case type::Transparent:
             Y = mRefl + mTrans;
             break;
         }
@@ -342,7 +383,7 @@ public:
     void updateRGB()
     {
         float Y = getYfromProps();
-        changeLuminance(mColor, Y);
+        mColor = changeLuminance(mColor, Y);
     }
 
     void updateProps()
@@ -351,12 +392,12 @@ public:
         float K = mKoeff;
         switch (mType)
         {
-        case Type::Metallic:
+        case type::Metallic:
             if (K != -1)
                 mKspec_refl = mKoeff;
             mRefl = Y;
             break;
-        case Type::Painted:
+        case type::Painted:
 
             if (K == -1)
                 K = mKspec_refl * mRefl;
@@ -368,7 +409,7 @@ public:
                 mRefl = 0.9;
 
             break;
-        case Type::Transparent:
+        case type::Transparent:
 
             if (mRefl == 0)
             {
@@ -401,50 +442,55 @@ public:
         color3f diff(mColor);
         color3f spec(mColor);
         color3f amb(mColor);
+        color3f trans(mColor);
 
         float opacity;
         float Shin;
         float N;
 
-        if (mType == Type::Metallic)
+        if (mType == type::Metallic)
         {
             float Ys = mRefl * mKspec_refl;
             float Yd = mRefl * (1 - mKspec_refl);
-            changeLuminance(diff, Yd);
-            changeLuminance(diff, Ys);
+
+            diff = changeLuminance(diff, Yd);
+            spec = changeLuminance(spec, Ys);
             amb = spec;
+            trans.set(0, 0, 0);
 
             opacity = 0;
             Shin = 40; // примерно
             N = 1;
         }
-        else if (mType == Type::Painted)
+        else if (mType == type::Painted)
         {
 
             float Ys = mRefl * mKspec_refl;
             float Yd = mRefl * (1 - Ys);
-            changeLuminance(diff, Yd);
-            spec = color3f(0, 0, 0);
-            changeLuminance(spec, Ys); // grayscale
+
+            diff = changeLuminance(diff, Yd);
+            spec = changeLuminance(color3f(0,0,0), Ys); // grayscale
             amb = spec;
+            trans.set(0, 0, 0);
 
             opacity = 0;
             Shin = 80; // примерно
             N = 1;
         }
-        else if (mType == Type::Transparent)
+        else if (mType == type::Transparent)
         {
             float Y = mRefl + mTrans;
             diff.set(0, 0, 0);
-            changeLuminance(spec, mRefl);
-            changeLuminance(amb, Y);
+            spec = changeLuminance(spec, mRefl);
+            amb = changeLuminance(amb, Y);
+            trans = changeLuminance(trans, mTrans);
 
             opacity = mTrans / Y;
             Shin = 40; // примерно
             N = mN;
         }
 
-        setMaterial(diff, spec, amb, opacity, Shin, N);
+        setMaterial(diff, spec, trans, amb, opacity, Shin, N);
     };
 
     // Show
@@ -459,17 +505,17 @@ public:
         cout << "Type: ";
         switch (mType)
         {
-        case Type::Metallic:
+        case type::Metallic:
             cout << "Metallic\n";
             cout << "Reflection factor: " << round(mRefl * 100) << "%\n";
             cout << "Reflective coating: " << round(mKspec_refl * 100) << "%";
             break;
-        case Type::Painted:
+        case type::Painted:
             cout << "Painted\n";
             cout << "Reflection factor: " << round(mRefl * 100) << "%\n";
             cout << "Reflective coating: " << round(mKspec_refl * 100) << "%";
             break;
-        case Type::Transparent:
+        case type::Transparent:
             cout << "Transparent\n";
             cout << "Reflection factor: " << round(mRefl * 100) << "%\n";
             cout << "Degree of transmission: " << round(mTrans * 100) << "%\n";
@@ -495,71 +541,776 @@ public:
         cout << "\n\n";
     }
 
-    // Show web
-    void show_web()
-    {
-        mMaterial.show_web();
-    }
+
+    private:
+
+
 };
 
-class Materials
+
+// Main ----------------------------------------------------------------
+int main()
 {
-public:
-    std::vector<Material> mMaterials;
+    cout << std::fixed << std::setprecision(2);
 
-    Materials() {}
+        MaterialMaster master;
+        master.init(137, 178, 88, type::Metallic, 0.21, 0.13);
+        master.show();
 
-    void add(Material mat)
+        Materials materials;
+        // 0
+        materials.add(master.getMaterial()); //"Init material"
+
+        // 1
+        master.setReflectingCoating(0.2);
+        materials.add(master.getMaterial()); //"Change Reflecting Coating to 0.2"
+
+        // 2
+        master.setType(type::Transparent);
+        materials.add(master.getMaterial()); //"Change type to Transparent"
+
+        // 3
+        master.setTrans(0.5);
+        materials.add(master.getMaterial()); //"Change Trans to 0.5"
+
+        // 4
+        master.setN(1.3);
+        materials.add(master.getMaterial()); //"Change N to 1.3"
+
+        // 5
+        master.setColor(50, 50, 50);
+        materials.add(master.getMaterial()); //"Change color to (50,50,50)"
+
+        // 6
+        master.setRefl(0.9);
+        materials.add(master.getMaterial()); //"Change Refl to 0.9"
+
+        // 7
+        master.setType(type::Painted);
+        materials.add(master.getMaterial()); //"Change type to Painted"
+
+        materials.show();
+        system("pause");
+
+
+}
+
+#elif _CALC_TYPE == 1
+namespace lin
+{
+
+    namespace output
     {
-        mMaterials.push_back(mat);
+        std::string toString(u32 type)
+        {
+            if (type == type::Metallic)
+                return "Metallic";
+
+            if (type == type::Painted)
+                return "Painted";
+
+            if (type == type::Transparent)
+                return "Transparent";
+
+            assert(0);
+            return "Unknown";
+        }
+
+        void toLog(const color3f& color, u32 type, float reflection_factor, float reflection_coating, float transperancy)
+        {
+            char buff[256];
+            sprintf_s(buff, 255, "Color: (%.6f, %.6f, %.6f), Type: %s, Reflection Factor: %.6f, Reflection Coating: %.6f, Transperancy: %.6f", color.r, color.g, color.b, toString(type).c_str(), reflection_factor, reflection_coating, transperancy);
+            cout << buff << endl;
+        }
+    }
+
+
+
+    float getYfromProps(u32 type,float Yrefl,float Kspec, float Ytrans)
+    {
+        float Y;
+        switch (type)
+        {
+        case type::Metallic:
+            Y = Yrefl;
+            break;
+        case type::Painted:
+            Y = Yrefl * (1 - Kspec) / (1 - Kspec * Yrefl);
+            break;
+        case type::Transparent:
+            Y = Yrefl + Ytrans;
+            break;
+        }
+        return Y;
+    }
+
+
+    Material convert_material(const color3f& color, u32 type, float reflection_factor, float reflection_coating, float transperancy = 1.0f)
+    {
+        clamp_color(const_cast<color3f&>(color));
+        clamp_value(reflection_factor, 0.9f);
+        clamp_value(reflection_coating, 1.0f);
+        clamp_value(transperancy, 1.0f);
+
+
+        Material result;
+        color3f sRGB = color;
+
+        // IN
+        float Yrefl = reflection_factor;                                           // Коэффициент отражения (Reflection factor) [0..0.9]
+        float Kspec = reflection_coating;                                          // Отражение (Reflection coating) [0..1]
+        float Ytrans = 1.0f - transperancy;                                        // Коэффициент передачи (degree of transmission) [0..1]
+
+
+        // Check sRGB
+        //float Y = getYfromProps(type, Yrefl, Kspec, Ytrans);
+        //sRGB = changeLuminance(sRGB, Y);
+
+
+        // vars
+        float Yspec = 0.0f;
+        float Ydiff = 0.0f;
+
+        color3f diff(color);
+        color3f spec(color);
+        color3f amb(color);
+        color3f trans(color);
+
+        float opacity;
+        float Shin;
+        float N = 1.0f;
+
+
+        if (type == type::Metallic)
+        {
+            float Ys = Yrefl * Kspec;
+            float Yd = Yrefl * (1 - Kspec);
+
+            diff = changeLuminance(diff, Yd);
+            spec = changeLuminance(spec, Ys);
+            amb = spec;
+            trans.set(0, 0, 0);
+
+            opacity = 0;
+            Shin = 40; // примерно
+            N = 1;
+        }
+        else if (type == type::Painted)
+        {
+
+            float Ys = Yrefl * Kspec;
+            float Yd = Yrefl * (1 - Ys);
+
+            diff = changeLuminance(diff, Yd);
+            spec = changeLuminance(color3f(0, 0, 0), Ys); // grayscale
+            amb = spec;
+            trans.set(0, 0, 0);
+
+            opacity = 0;
+            Shin = 80; // примерно
+            N = 1;
+        }
+        else if (type == type::Transparent)
+        {
+            float Y = Yrefl + Ytrans;
+            diff.set(0, 0, 0);
+            spec = changeLuminance(spec, Yrefl);
+            amb = changeLuminance(amb, Y);
+            trans = changeLuminance(trans, Ytrans);
+
+            opacity = Ytrans / Y;
+            Shin = 40; // примерно
+            N = N;
+        }
+
+        // ------------------------------------
+
+        result.init(diff, spec, trans, amb);
+
+        if (!result.isValid())
+        {
+            cout << "Error: -----------------------------------------------------------" << endl;
+            output::toLog(color, type, reflection_factor, reflection_coating, transperancy);
+            result.show();
+        }
+        else {
+            cout << "Valid: -----------------------------------------------------------" << endl;
+            output::toLog(color, type, reflection_factor, reflection_coating, transperancy);
+            result.show();
+        }
+
+        return result;
+    }
+
+
+
+    Material convert_material_old(const color3f& color, u32 type, float reflection_factor, float reflection_coating, float transperancy = 1.0f)
+    {
+        clamp_color(const_cast<color3f&>(color));
+        clamp_value(reflection_factor, 0.9f);
+        clamp_value(reflection_coating, 1.0f);
+        clamp_value(transperancy, 1.0f);
+
+        Material result;
+        color3f sRGB = color;
+
+        // gamma-expanded values (sometimes called "linear values" or "linear-light values")
+        color3f linear = utils::to_linear(color);
+
+        const float Kr = 0.2126f;
+        const float Kb = 0.0722f;
+        const float Kg = 1.0f - Kr - Kb;
+
+        color3f Y(Kr * linear.r, Kg * linear.g, Kb * linear.b);
+        float Ysum = (Y.r + Y.g + Y.b);
+
+        Ysum = std::max(_epsilon, Ysum);
+
+        // IN
+        float Yrefl = reflection_factor < 0.9f ? reflection_factor : 0.9f;         // Коэффициент отражения (Reflection factor) [0..0.9]
+        float Kspec = reflection_coating;                                          // Отражение (Reflection coating) [0..1]
+        float Ytrans = 1.0f - transperancy;                                        // Коэффициент передачи (degree of transmission) [0..1]
+
+        // vars
+        float Yspec = 0.0f;
+        float Ydiff = 0.0f;
+
+        // out
+        color3f specular_Y;
+        color3f specular_linear;
+        color3f specular_sRGB;
+
+        color3f transmission_Y;
+        color3f transmission_linear;
+        color3f transmission_sRGB;
+
+        color3f diffuse_Y;
+        color3f diffuse_linear;
+        color3f diffuse_sRGB;
+
+        color3f reflection_Y;
+        color3f reflection_linear;
+        color3f reflection_sRGB;
+
+
+
+        if (type == type::Transparent)
+        {
+            Yspec = Yrefl;
+            Ydiff = 0.0f;
+
+            // specular (upper-half)
+            specular_Y.r = Y.r * Yspec / Ysum;
+            specular_Y.g = Y.g * Yspec / Ysum;
+            specular_Y.b = Y.b * Yspec / Ysum;
+
+            // specular (bottom-half)
+            specular_linear.r = specular_Y.r / Kr;
+            specular_linear.g = specular_Y.g / Kg;
+            specular_linear.b = specular_Y.b / Kb;
+
+            specular_sRGB = utils::from_linear(specular_linear);
+
+            // transmission
+            transmission_Y.r = Y.r * Ytrans / Ysum;
+            transmission_Y.g = Y.g * Ytrans / Ysum;
+            transmission_Y.b = Y.b * Ytrans / Ysum;
+
+            transmission_linear.r = transmission_Y.r / Kr;
+            transmission_linear.g = transmission_Y.g / Kg;
+            transmission_linear.b = transmission_Y.b / Kb;
+
+            transmission_sRGB = utils::from_linear(transmission_linear);
+        }
+        else
+        {
+            if (type == type::Metallic)
+            {
+                Yspec = Yrefl * Kspec;
+                Ytrans = 0.0f;                   // не прозрачный
+                Ydiff = Yrefl * (1.0f - Kspec);
+
+                // specular (upper-half)
+                specular_Y.r = Y.r * Yspec / Ysum;
+                specular_Y.g = Y.g * Yspec / Ysum;
+                specular_Y.b = Y.b * Yspec / Ysum;
+            }
+            else
+            {
+                assert(type == type::Painted);
+
+                Yspec = Yrefl * Kspec;
+                Ytrans = 0.0f;                   // не прозрачный
+                Ydiff = Yrefl * (1.0f - Kspec);
+
+                // specular (upper-half)
+                specular_Y.r = Kr * Yspec;
+                specular_Y.g = Kg * Yspec;
+                specular_Y.b = Kb * Yspec;
+            }
+
+            // specular (bottom-half)
+            specular_linear.r = specular_Y.r / Kr;
+            specular_linear.g = specular_Y.g / Kg;
+            specular_linear.b = specular_Y.b / Kb;
+
+            // norm
+
+            specular_sRGB = utils::from_linear(specular_linear);
+
+            // diffuse
+            diffuse_Y.r = Y.r * Ydiff / Ysum;
+            diffuse_Y.g = Y.g * Ydiff / Ysum;
+            diffuse_Y.b = Y.b * Ydiff / Ysum;
+
+            diffuse_linear.r = diffuse_Y.r / Kr;
+            diffuse_linear.g = diffuse_Y.g / Kg;
+            diffuse_linear.b = diffuse_Y.b / Kb;
+
+            diffuse_sRGB = utils::from_linear(diffuse_linear);
+
+            // reflection
+            reflection_Y.r = specular_Y.r + diffuse_Y.r;
+            reflection_Y.g = specular_Y.g + diffuse_Y.g;
+            reflection_Y.b = specular_Y.b + diffuse_Y.b;
+
+            reflection_linear.r = reflection_Y.r / Kr;
+            reflection_linear.g = reflection_Y.g / Kg;
+            reflection_linear.b = reflection_Y.b / Kb;
+
+            reflection_sRGB = utils::from_linear(reflection_linear);
+        }
+
+        result.diffuse = diffuse_linear;
+        result.specular = specular_linear;
+        result.transmission = transmission_linear;
+
+        result.diffuse_sRGB = diffuse_sRGB;
+        result.specular_sRGB = specular_sRGB;
+        result.ambient_sRGB = transmission_sRGB;
+
+        if (!result.isValid())
+        {
+            cout << "Error: -----------------------------------------------------------" << endl;
+            output::toLog(color, type, reflection_factor, reflection_coating, transperancy);
+            result.show();
+        }
+
+        return result;
+    }
+
+
+
+
+
+}
+
+
+namespace tests {
+
+    void test_input_color(u32 mtltype, float reflection_factor, float reflection_coating, float transperancy, float color_step = 0.1f)
+    {
+
+        cout << "test_input_color: -----------------------------------------------------------" << endl;
+
+        Material mtl;
+
+        u32 color_count = 1.0f / color_step;
+
+        color3f color;
+
+        for (u32 i = 0; i < color_count; ++i)
+        {
+            color.r += color_step;
+
+            for (u32 j = 0; j < color_count; ++j)
+            {
+                color.g += color_step;
+
+                for (u32 k = 0; k < color_count; ++k)
+                {
+                    color.b += color_step;
+
+
+                    mtl = lin::convert_material(color, mtltype, reflection_factor, reflection_coating, transperancy);
+
+                }
+            }
+        }
+    }
+
+    void test_type(float reflection_factor, float reflection_coating, float transperancy, float color_step = 0.1f)
+    {
+        cout << "test_type: -----------------------------------------------------------" << endl;
+
+        for (u32 t = type::Metallic; t < type::Last; ++t)
+        {
+            test_input_color(t, reflection_factor, reflection_coating, transperancy, color_step);
+        }
+
+    }
+
+    void test_end(float reflection_factor_step, float reflection_coating_step, float transperancy_step, float color_step = 0.1f)
+    {
+        cout << "test_end: -----------------------------------------------------------" << endl;
+
+        u32 reflection_factor_count = 0.9f / reflection_factor_step;
+        u32 reflection_coating_count = 1.0f / reflection_coating_step;
+        u32 transperancy_count = 1.0f / transperancy_step;
+
+        float reflection_factor(0);
+        float reflection_coating(0);
+        float transperancy(0);
+
+        for (u32 i = 0; i < reflection_factor_count; ++i)
+        {
+            reflection_factor += reflection_factor_step;
+
+            for (u32 j = 0; j < reflection_coating_count; ++j)
+            {
+                reflection_coating += reflection_coating_step;
+
+                for (u32 k = 0; k < transperancy_count; ++k)
+                {
+                    transperancy += transperancy_step;
+
+                    test_type(reflection_factor, reflection_coating, transperancy, color_step);
+                }
+            }
+        }
+    }
+
+
+}
+
+
+// Main ----------------------------------------------------------------
+int main()
+{
+    cout << std::fixed << std::setprecision(2);
+
+
+
+    tests::test_input_color(type::Painted, 0.5f, 0.0f, 1.0f, 0.1f);
+    //tests::test_type(0.5f, 0.0f, 1.0f, 0.1f);
+    //tests::test_end(0.1f, 0.1f, 0.1f, 0.1f);
+
+    system("pause");
+    return 0;
+};
+
+#elif _CALC_TYPE == 2
+
+
+namespace
+{
+    static const float magic_1 = 0.008856451679036f;   // 216/24389
+    static const float magic_2 = 903.296296296296296f; // 24389/27
+
+
+
+    void color_check(color4f& c)
+    {
+        float mx = gre_max(c.r, gre_max(c.g, c.b));
+        if (mx > 1)
+        {
+            c.r /= mx;
+            c.g /= mx;
+            c.b /= mx;
+        }
+    }
+
+    void color_normalize(color4f& c, float nmv)
+    {
+        nmv /= 3;
+        float mx = gre_max(c.r, gre_max(c.g, c.b));
+        if (mx > nmv)
+        {
+            c.r /= mx;
+            c.g /= mx;
+            c.b /= mx;
+        }
+        else
+        {
+            c.r /= nmv;
+            c.g /= nmv;
+            c.b /= nmv;
+        }
+    }
+
+    float log_a_to_base_b(const float& a, const float& b)
+    {
+        return log2(a) / log2(b);
+    }
+
+    float Y2LS(float Y) { return (Y <= magic_1) ? Y * magic_2 : std::pow(Y, 1.0f / 3.0f) * 116.0f - 16.0f; }
+
+    float Y2Log(float Y, float b = 8.0f) { return log_a_to_base_b(Y, b) / 3.0f + 1.0f; }
+
+    void convert(color4f& color, float b = 0.0f)
+    {
+        float Y = (color.r + color.g + color.b) / 3.0f;
+        float Ynew;
+        if (Y > 0)
+        {
+            if (b > 0)
+            {
+                Ynew = Y2Log(Y, b); // логарифмический контраст
+            }
+            else
+            {
+                Ynew = Y2LS(Y) * 0.01f; // физиологический контраст
+            }
+
+            color *= (Ynew / Y);
+
+            color_check(color);
+        }
+    }
+
+}
+
+
+
+struct DialuxMaterial
+{
+    color4f color; // sRGB [0,1] (https://en.wikipedia.org/wiki/SRGB)
+
+    u32 type;         // 0 - Metallic;  1 - Painted; 2 - Transparent;
+    float Refl;       // Reflection factor        [0,0.9]
+    float Kspec_refl; // Reflective coating       [0,1]
+    float Trans;      // Degree of transmission   [0,1]
+    float N;          // Refractive index         [1,2]
+    float Shin;       // Shininness               [1,128]
+
+    // Calc Params
+    color3f cl; // linear specular Y RGB[0,1]
+    color3f cd; // linear diffuse Y RGB[0,1]
+    color3f cs; // linear sum Y RGB[0,1]
+    float opacity = 0.0f;
+
+    DialuxMaterial() {
+
+    };
+
+    DialuxMaterial(const DialuxMaterial& mat)
+    {
+        set(mat.color, mat.type, mat.Refl, mat.Kspec_refl, mat.Trans, mat.N, mat.Shin);
+    };
+
+    DialuxMaterial(const color3f& c, const unsigned int& t, const float& refl,
+        const float& kspec_refl, const float& trans, const float& n, const float& shin)
+    {
+        set(c, t, refl, kspec_refl, trans, n, shin);
+    }
+
+    void set(const color3f& c, const unsigned int& t, const float& refl,
+        const float& kspec_refl, const float& trans, const float& n, const float& shin)
+    {
+        color = color3f(c);
+        type = t;
+        Refl = refl;
+        Kspec_refl = kspec_refl;
+        Trans = trans;
+        N = n;
+        Shin = shin;
     }
 
     void show()
     {
-        for (int i = 0; i < mMaterials.size(); i++)
+
+        cout << "Material--------------\n";
+        cout << "color: ";
+        color.show255();
+        cout << "\n";
+
+        cout << "type: ";
+        cout << type;
+        cout << "\n";
+
+        cout << "Refl: ";
+        cout << Refl;
+        cout << "\n";
+
+        cout << "Kspec_refl: ";
+        cout << Kspec_refl;
+        cout << "\n";
+
+        cout << "Trans: ";
+        cout << Trans;
+        cout << "\n";
+
+        cout << "cl: ";
+        cl.show();
+        cout << "\n";
+
+        cout << "cd: ";
+        cd.show();
+        cout << "\n";
+
+        cout << "cs: ";
+        cs.show();
+        cout << "\n";
+
+        cout << "opacity: ";
+        cout << opacity;
+        cout << "\n";
+        cout << "\n";
+    }
+
+    void checkMaterialColor(const color4f& c, color3f& rgb, const float& Y)
+    {
+        float sum = K_R * rgb.r + K_G * rgb.g + K_B * rgb.b;
+        if (abs(sum - Y) > 0.001)
         {
-            cout << i << ". ";
-            mMaterials[i].show();
-            cout << "\n";
+            rgb = changeY(utils::to_linear(c), Y);
         }
     }
+
+    void prepareColors()
+    {
+
+        // const color4f lamp_color(1.0f, 1.0f, 1.0f); //  цвет источника
+        float Y;
+        if (type == 0) // Metallic
+        {
+            // float Ys = Refl * Kspec_refl;
+            // float Yd = Refl * (1 - Kspec_refl);
+            Y = Refl;
+            checkMaterialColor(color, cs, Y);
+        }
+        else if (type == 1) // Painted
+        {
+
+            // float Ys = Refl * Kspec_refl;
+            // float Yd = Refl * (1 - Ys);
+            Y = Refl * (1 - Kspec_refl) / (1 - Kspec_refl * Refl);
+            checkMaterialColor(color, cs, Y);
+        }
+        else if (type == 2) // Transparent
+        {
+            Y = Refl + Trans;
+            checkMaterialColor(color, cs, Y);
+            opacity = Trans / Y;
+        }
+    }
+
+    void NormaliseY(float& Ysum, float& Y1, float& Y2)
+    {
+        if (Ysum > 1)
+        {
+            // Y1/Y2 = K
+            // Y1+Y2 = 1
+            // --------------
+            // Y2 = 1 - K*Y2
+            // Y1 = 1 - Y2
+            float K = Y1 / Y2;
+            Y2 = 1 - K * Y2;
+            Y1 = 1 - Y2;
+            Ysum = 1;
+        }
+    }
+
+
+    float getY(const color3f& rgb)
+    {
+        return K_R * utils::to_linear(rgb.r) + K_G * utils::to_linear(rgb.g) + K_B * utils::to_linear(rgb.b);
+    }
+    
+    // Получить Dialux материал из OpenGL материала
+    void fromOpenGLMaterial(color3f Ka, color3f Kd, color3f Ks, color3f Ke, float Ns, float Ni, float d)
+    {
+        // Ka -  Ambient color       [[0,1],[0,1],[0,1]]
+        // Kd -  Diffuse color       [[0,1],[0,1],[0,1]]
+        // Ks -  Specular color      [[0,1],[0,1],[0,1]]
+        // Ke -  Emission color      [[0,1],[0,1],[0,1]]
+
+        // Ns -  Shininess           [0,128]
+        // Ni -  Refractive index    [1,2]
+
+        // d -   dissolve (1/opacity)  [0,1]
+
+        float type = 1; // 0 - Metallic;  1 - Painted; 2 - Transparent;
+
+        if (d < 1.0)
+        {
+            type = 2;
+        }
+        else if (!Ks.isEmpty() && Kd == Ks)
+        {
+            type = 0;
+        }
+
+        float Refl, Kspec_refl, Trans, N, Shin;
+        color3f color = Kd;
+
+        // Trans = 0;
+        // N = 1;
+        // Shin = Ns;
+
+        if (color.isEmpty())
+        {
+            color = Ks;
+        }
+
+        if (type == 0) // Type::Metallic
+        {
+
+            float Ys = getY(Ks) + getY(Ka);
+            float Yd = getY(Kd);
+            float Y = Ys + Yd;
+            NormaliseY(Y, Ys, Yd);
+
+            color = changeLuminance(color, Y);
+
+            Refl = Y;
+            Kspec_refl = Ys / Y;
+            Shin = 40;
+        }
+        else if (type == 1) // Type::Painted
+        {
+
+            float Ys = getY(Ks);
+            float Yd = getY(Kd) + getY(Ka);
+            float Y = Ys + Yd;
+            NormaliseY(Y, Ys, Yd);
+
+            color = changeLuminance(color, Y);
+
+            Refl = Y;
+            Kspec_refl = Ys / Y;
+            Shin = 80;
+        }
+        else if (type == 2) // Type::Transparent
+        {
+
+            Trans = 1 / d;
+            Refl = getY(Ks) + getY(Kd);
+            float Y = Refl + Trans;
+            NormaliseY(Y, Refl, Trans);
+
+            color = changeLuminance(color, Y);
+
+            N = Ns;
+            Shin = 40;
+        }
+
+        //this->color = color;
+        //this->type = type;
+        //this->Refl = Refl;
+        //this->Kspec_refl = Kspec_refl;
+        //this->Trans = Trans;
+        //this->Shin = Shin;
+    }
+
 };
 
-void material::prepareColors()
-{
-
-    // const color4f lamp_color(1.0f, 1.0f, 1.0f); //  цвет источника
-    float Y;
-    if (type == 0) // Metallic
-    {
-        // float Ys = Refl * Kspec_refl;
-        // float Yd = Refl * (1 - Kspec_refl);
-        Y = Refl;
-        checkMaterialColor(color, cs, Y);
-    }
-    else if (type == 1) // Painted
-    {
-
-        // float Ys = Refl * Kspec_refl;
-        // float Yd = Refl * (1 - Ys);
-        Y = Refl * (1 - Kspec_refl) / (1 - Kspec_refl * Refl);
-        checkMaterialColor(color, cs, Y);
-    }
-    else if (type == 2) // Transparent
-    {
-        Y = Refl + Trans;
-        checkMaterialColor(color, cs, Y);
-        opacity = Trans / Y;
-    }
-}
-
-// Colors ----------------------------------------------------------------
 
 class Geometry
 {
 
-    material m_material;
-    vertex **points = nullptr;
+    DialuxMaterial m_material;
+    vertex** points = nullptr;
     u32 p_count = 0;
 
 public:
@@ -580,28 +1331,28 @@ public:
         }
     }
 
-    void setMaterial(material &mat)
+    void setMaterial(DialuxMaterial& mat)
     {
         m_material = mat;
     }
 
-    void setPoints(const vertex &point, u32 count)
+    void setPoints(const vertex& point, u32 count)
     {
 
         p_count = count;
-        points = new vertex *[p_count];
+        points = new vertex * [p_count];
         for (u32 i = 0; i < p_count; i++)
         {
             points[i] = new vertex(point);
         }
     }
 
-    material &getMaterial()
+    DialuxMaterial& getMaterial()
     {
         return m_material;
     }
 
-    vertex *&operator[](u32 index) const
+    vertex*& operator[](u32 index) const
     {
 
         return points[index];
@@ -625,7 +1376,7 @@ class PuryaMesh
 {
 
     u32 m_calc_points_count;
-    Geometry *m_calc_mesh;
+    Geometry* m_calc_mesh;
 
 public:
     PuryaMesh()
@@ -637,12 +1388,12 @@ public:
         delete m_calc_mesh;
     };
 
-    Geometry *&getGeometry()
+    Geometry*& getGeometry()
     {
         return m_calc_mesh;
     }
 
-    void setMaterial(material &mat)
+    void setMaterial(DialuxMaterial& mat)
     {
         m_calc_mesh->setMaterial(mat);
     }
@@ -658,7 +1409,27 @@ public:
         m_calc_mesh->show();
     }
 
-    bool normalizeColor2(float mvt)
+
+    void applyMaterialToPoint(vertex* v, const DialuxMaterial& mtl)
+    {
+        const color4f& color = mtl.color;
+        const u32& type = mtl.type;
+
+        v->c = v->vs * mtl.cs;
+
+        // if (type == 1) // Painted
+        // {
+        //     c = vd * mtl.cd+ vl * mtl.cl
+        // }
+        // else // Metallic && Transparent
+        // {
+        //     c = (vd + vl) * mtl.cs;
+        // }
+    }
+
+
+
+    bool normalizeColor(float mvt)
     {
         if (m_calc_points_count)
         {
@@ -666,18 +1437,18 @@ public:
             float sum(0.0f);
             float mx(0.0f);
             float Y(0);
-            material &mtl = m_calc_mesh->getMaterial();
+            DialuxMaterial& mtl = m_calc_mesh->getMaterial();
             mtl.prepareColors(); // Подготовить цвета материала
-            vertex *v(nullptr);
+            vertex* v(nullptr);
             color3f ic;
             for (u32 i = 0; i < m_calc_points_count; ++i)
             {
                 v = (*m_calc_mesh)[i];
-                color4f &c = v->c;   // цвет который необходимо расчитать для цветного режима
-                color4f &cg = v->cg; // цвет который необходимо расчитать для градаций серого режима
+                color4f& c = v->c;   // цвет который необходимо расчитать для цветного режима
+                color4f& cg = v->cg; // цвет который необходимо расчитать для градаций серого режима
 
-                color3f &vl = v->vl;  // прямая составляющая освещенности
-                color3f &vd = v->vd;  // диффузная состовляющая освещенности
+                color3f& vl = v->vl;  // прямая составляющая освещенности
+                color3f& vd = v->vd;  // диффузная состовляющая освещенности
                 color3f vs = vd + vl; // суммарная освещенность
 
                 // Расчет для град аций серого (тут материал не учитываем, также как в псевдоцветах )
@@ -685,13 +1456,13 @@ public:
                 cg.set(Y, Y, Y);
                 color_normalize(cg, mvt); // Нормируем
                 convert(cg, 8.0f);        // Применяем логарифмический контраст
-                RGBfromLinear(cg);        // Преобразуем в sRGB цвет
+                cg = utils::from_linear(cg);        // Преобразуем в sRGB цвет
 
                 // Расчет для обычного отображения
                 applyMaterialToPoint(v, mtl); // Применяем материал (реализуем последнее отражение в экран)
                 color_normalize(c, mvt);      // Нормируем
                 convert(c);                   // Применяем физиологический контраст
-                RGBfromLinear(c);             // Преобразуем в sRGB цвет
+                c = utils::from_linear(c);             // Преобразуем в sRGB цвет
             }
             return true;
         }
@@ -699,80 +1470,64 @@ public:
     }
 };
 
-// Main ----------------------------------------------------------------
-int main()
+
+// Получить цвет пикселя из прямой и отраженной составляющей луча падающий на определенный материал
+color3f GetColor(color3f Direct, color3f Photon, float Ymax, color3f diffuse, color3f specular, color3f transmission)
 {
+    // Нормируем результаты расчета
+    Direct /= Ymax;
+    Photon /= Ymax;
+
+    // sRGB -> linearRGB
+    diffuse = utils::to_linear(diffuse);
+    specular = utils::to_linear(specular);
+    transmission = utils::to_linear(transmission);
+
+    // Производим расчет
+    color3f Yrgb = Direct * specular + Photon * diffuse;
+    color3f Yrgb_trans = (Direct + Photon) * transmission; // прозрачная часть если нужна
+
+    // linearRGB -> sRGB
+    Yrgb = utils::from_linear(Yrgb);
+    Yrgb_trans = utils::from_linear(Yrgb_trans); // прозрачная часть если нужна
+
+    return Yrgb;
+}
+
+
+int main() {
+
     cout << std::fixed << std::setprecision(2);
 
-    if (false)
-    {
-        MaterialMaster master;
-        master.init(137, 178, 88, MaterialMaster::Type::Metallic, 0.21, 0.13);
-        master.show();
+    PuryaMesh mesh = PuryaMesh();
 
-        Materials materials;
-        // 0
-        materials.add(master.createMaterial("Init material"));
+    // Create material
+    DialuxMaterial mat = DialuxMaterial();
+    mat.color = color3f(0.2f, 1.0f, 0.4f);
+    mat.type = 1;
+    mat.Refl = 0.5f;
+    mat.Kspec_refl = 0.5f;
+    mat.prepareColors();
+    mat.show();
+    mesh.setMaterial(mat);
 
-        // 1
-        master.setKspec_refl(0.2);
-        materials.add(master.createMaterial("Change Kspec_refl to 0.2"));
+    // Create mesh point
+    u32 p_count = 1;
+    vertex point = vertex();
+    point.vl = color3f(100.0f, 200.0f, 200.0f);
+    point.vd = color3f(20.0f, 30.0f, 60.0f);
+    point.show_point();
+    mesh.setPoints(point, p_count);
 
-        // 2
-        master.setType(MaterialMaster::Type::Transparent);
-        materials.add(master.createMaterial("Change type to Transparent"));
+    // Calc
+    float mvt = 1000.0f; // max lux point (лм)
+    mesh.normalizeColor(mvt);
+    mesh.show();
+    system("pause");
 
-        // 3
-        master.setTrans(0.5);
-        materials.add(master.createMaterial("Change Trans to 0.5"));
-
-        // 4
-        master.setN(1.3);
-        materials.add(master.createMaterial("Change N to 1.3"));
-
-        // 5
-        master.setColor(50, 50, 50);
-        materials.add(master.createMaterial("Change color to (50,50,50)"));
-
-        // 6
-        master.setRefl(0.9);
-        materials.add(master.createMaterial("Change Refl to 0.9"));
-
-        // 7
-        master.setType(MaterialMaster::Type::Painted);
-        materials.add(master.createMaterial("Change type to Painted"));
-
-        materials.show();
-        master.show_web();
-    }
-
-    if (true)
-    {
-
-        PuryaMesh mesh = PuryaMesh();
-
-        // Create material
-        material mat = material();
-        mat.color = color3f(0.2f, 1.0f, 0.4f);
-        mat.type = 1;
-        mat.Refl = 0.5f;
-        mat.Kspec_refl = 0.5f;
-        mat.prepareColors();
-        mat.show();
-        mesh.setMaterial(mat);
-
-        // Create mesh point
-        u32 p_count = 1;
-        vertex point = vertex();
-        point.vl = color3f(100.0f, 200.0f, 200.0f);
-        point.vd = color3f(20.0f, 30.0f, 60.0f);
-        point.show_point();
-        mesh.setPoints(point, p_count);
-
-        // Calc
-        float mvt = 1000.0f; // max lux point (лм)
-        mesh.normalizeColor2(mvt);
-        mesh.show();
-        system("pause");
-    }
 }
+#endif
+
+
+
+
