@@ -13,7 +13,7 @@ using namespace std;
 
 
 
-#define _CALC_TYPE 1 // 0 - old; 1 - new; 2 - color mesh;
+#define _CALC_TYPE 0 // 0 - old; 1 - new; 2 - color mesh;
 
 #define _epsilon 0.000001f
 
@@ -549,7 +549,7 @@ public:
         color3f Yrgb;
 
         // sRGB to Y
-        Yrgb = to_luminance(mColor);
+        Yrgb = utils::to_luminance(mColor);
 
         float Y = 0.9 * Yrgb.sum(); // 10% идет на поглощение
         return Y;
