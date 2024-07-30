@@ -528,13 +528,13 @@ class MaterialMaster {
             Yrgb = changeY(RGBtoLinear(Yrgb), Ysum);
             diff = [0, 0, 0];
             spec = RGBfromLinear(partLuminance(Yrgb, Refl, Ysum));
-            trans = RGBfromLinear(partLuminance(Yrgb, Trans, Ysum));
+            // trans = RGBfromLinear(partLuminance(Yrgb, Trans, Ysum));
 
             amb = Yrgb;
 
 
 
-            opacity = Trans / Y;
+            opacity = Trans / Ysum;
             Shin = 40; // примерно
             N = Props.n.getValue();
         }
