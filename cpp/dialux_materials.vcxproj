@@ -19,7 +19,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="tools.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>

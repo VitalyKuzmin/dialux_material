@@ -17,6 +17,10 @@ using namespace std;
 
 #define _epsilon 0.000001f
 
+// Constants RGB -> Y (https://en.wikipedia.org/wiki/Relative_luminance)
+const float K_R = 0.2126;
+const float K_G = 0.7152;
+const float K_B = 0.0722;
 
 namespace type
 {
