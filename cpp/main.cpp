@@ -234,13 +234,9 @@ using namespace tools;
 class Material
 {
 public:
-    color3f diffuse;               // диффузная часть (Y)
-    color3f specular;              // зеркальная часть (Y)
-    color3f transmission;          // пропускание часть (Y)
-
-    color3f diffuse_linear;        // диффузная часть (linear)
-    color3f specular_linear;       // зеркальная часть (linear)
-    color3f transmission_linear;   // пропускание часть (linear)
+    color3f diffuse;               // диффузная часть (linear)
+    color3f specular;              // зеркальная часть (linear)
+    color3f transmission;          // пропускание часть (linear)
 
     // Open GL Phong Shader Params -----------------------------------------------------------------------------
     color3f diffuse_sRGB;        // диффузная часть (sRGB)
@@ -276,14 +272,9 @@ public:
         N = n;
 
         // linear
-        diffuse_linear = utils::to_linear(d);
-        specular_linear = utils::to_linear(s);
-        transmission_linear = utils::to_linear(t);
-
-        // Y
-        diffuse = utils::linear_to_luminance(diffuse_linear);
-        specular = utils::linear_to_luminance(specular_linear);
-        transmission = utils::linear_to_luminance(transmission_linear);
+        diffuse = utils::to_linear(d);
+        specular = utils::to_linear(s);
+        transmission = utils::to_linear(t);
 
     }
     bool isValid() const
@@ -944,164 +935,6 @@ namespace lin
 
         return result;
     }
-
-
-
-    Material convert_material_old(const color3f& color, u32 type, float reflection_factor, float reflection_coating, float transperancy = 1.0f)
-    {
-        clamp_color(const_cast<color3f&>(color));
-        clamp_value(reflection_factor, 0.9f);
-        clamp_value(reflection_coating, 1.0f);
-        clamp_value(transperancy, 1.0f);
-
-        Material result;
-        color3f sRGB = color;
-
-        // gamma-expanded values (sometimes called "linear values" or "linear-light values")
-        color3f linear = utils::to_linear(color);
-
-        const float Kr = 0.2126f;
-        const float Kb = 0.0722f;
-        const float Kg = 1.0f - Kr - Kb;
-
-        color3f Y(Kr * linear.r, Kg * linear.g, Kb * linear.b);
-        float Ysum = (Y.r + Y.g + Y.b);
-
-        Ysum = std::max(_epsilon, Ysum);
-
-        // IN
-        float Yrefl = reflection_factor < 0.9f ? reflection_factor : 0.9f;         // Коэффициент отражения (Reflection factor) [0..0.9]
-        float Kspec = reflection_coating;                                          // Отражение (Reflection coating) [0..1]
-        float Ytrans = 1.0f - transperancy;                                        // Коэффициент передачи (degree of transmission) [0..1]
-
-        // vars
-        float Yspec = 0.0f;
-        float Ydiff = 0.0f;
-
-        // out
-        color3f specular_Y;
-        color3f specular_linear;
-        color3f specular_sRGB;
-
-        color3f transmission_Y;
-        color3f transmission_linear;
-        color3f transmission_sRGB;
-
-        color3f diffuse_Y;
-        color3f diffuse_linear;
-        color3f diffuse_sRGB;
-
-        color3f reflection_Y;
-        color3f reflection_linear;
-        color3f reflection_sRGB;
-
-
-
-        if (type == type::Transparent)
-        {
-            Yspec = Yrefl;
-            Ydiff = 0.0f;
-
-            // specular (upper-half)
-            specular_Y.r = Y.r * Yspec / Ysum;
-            specular_Y.g = Y.g * Yspec / Ysum;
-            specular_Y.b = Y.b * Yspec / Ysum;
-
-            // specular (bottom-half)
-            specular_linear.r = specular_Y.r / Kr;
-            specular_linear.g = specular_Y.g / Kg;
-            specular_linear.b = specular_Y.b / Kb;
-
-            specular_sRGB = utils::from_linear(specular_linear);
-
-            // transmission
-            transmission_Y.r = Y.r * Ytrans / Ysum;
-            transmission_Y.g = Y.g * Ytrans / Ysum;
-            transmission_Y.b = Y.b * Ytrans / Ysum;
-
-            transmission_linear.r = transmission_Y.r / Kr;
-            transmission_linear.g = transmission_Y.g / Kg;
-            transmission_linear.b = transmission_Y.b / Kb;
-
-            transmission_sRGB = utils::from_linear(transmission_linear);
-        }
-        else
-        {
-            if (type == type::Metallic)
-            {
-                Yspec = Yrefl * Kspec;
-                Ytrans = 0.0f;                   // не прозрачный
-                Ydiff = Yrefl * (1.0f - Kspec);
-
-                // specular (upper-half)
-                specular_Y.r = Y.r * Yspec / Ysum;
-                specular_Y.g = Y.g * Yspec / Ysum;
-                specular_Y.b = Y.b * Yspec / Ysum;
-            }
-            else
-            {
-                assert(type == type::Painted);
-
-                Yspec = Yrefl * Kspec;
-                Ytrans = 0.0f;                   // не прозрачный
-                Ydiff = Yrefl * (1.0f - Kspec);
-
-                // specular (upper-half)
-                specular_Y.r = Kr * Yspec;
-                specular_Y.g = Kg * Yspec;
-                specular_Y.b = Kb * Yspec;
-            }
-
-            // specular (bottom-half)
-            specular_linear.r = specular_Y.r / Kr;
-            specular_linear.g = specular_Y.g / Kg;
-            specular_linear.b = specular_Y.b / Kb;
-
-            // norm
-
-            specular_sRGB = utils::from_linear(specular_linear);
-
-            // diffuse
-            diffuse_Y.r = Y.r * Ydiff / Ysum;
-            diffuse_Y.g = Y.g * Ydiff / Ysum;
-            diffuse_Y.b = Y.b * Ydiff / Ysum;
-
-            diffuse_linear.r = diffuse_Y.r / Kr;
-            diffuse_linear.g = diffuse_Y.g / Kg;
-            diffuse_linear.b = diffuse_Y.b / Kb;
-
-            diffuse_sRGB = utils::from_linear(diffuse_linear);
-
-            // reflection
-            reflection_Y.r = specular_Y.r + diffuse_Y.r;
-            reflection_Y.g = specular_Y.g + diffuse_Y.g;
-            reflection_Y.b = specular_Y.b + diffuse_Y.b;
-
-            reflection_linear.r = reflection_Y.r / Kr;
-            reflection_linear.g = reflection_Y.g / Kg;
-            reflection_linear.b = reflection_Y.b / Kb;
-
-            reflection_sRGB = utils::from_linear(reflection_linear);
-        }
-
-        result.diffuse = diffuse_linear;
-        result.specular = specular_linear;
-        result.transmission = transmission_linear;
-
-        result.diffuse_sRGB = diffuse_sRGB;
-        result.specular_sRGB = specular_sRGB;
-        result.ambient_sRGB = transmission_sRGB;
-
-        if (!result.isValid())
-        {
-            cout << "Error: -----------------------------------------------------------" << endl;
-            output::toLog(color, type, reflection_factor, reflection_coating, transperancy);
-            result.show();
-        }
-
-        return result;
-    }
-
 
 
 
