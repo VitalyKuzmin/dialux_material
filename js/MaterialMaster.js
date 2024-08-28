@@ -1,6 +1,8 @@
 
 import { GUI } from './libs/lil-gui.module.min.js';
 
+//import { color3f } from './utils.js';
+
 /* Лакированный материал
 ----------------------------------------------------------------
     Система уравнений:
@@ -26,6 +28,12 @@ import { GUI } from './libs/lil-gui.module.min.js';
 const K_R = 0.2126;
 const K_G = 0.7152;
 const K_B = 0.0722;
+const K = [K_R, K_G, K_B]
+
+
+//var KKK = new color3f(K_R, K_G, K_B);
+
+var epsilon = 0.000001;
 
 // sRGB <-> lRGB (https://mina86.com/2019/srgb-xyz-conversion) 
 
@@ -64,75 +72,104 @@ function RGBfromLinear(rgb) {
 }
 
 
+
 // Change rgb by Luminance ----------------------------------------------------------------
 
+function YfromRGB(rgb) {
+
+    return (K_R * rgb[0] + K_G * rgb[1] + K_B * rgb[2]);
+}
 
 
-function changeY(color, Ynew) {
-    const K = [K_R, K_G, K_B]
+// Change rgb by Luminance -----------------------------------------------------------------------
 
-    // foe no division to null errors
-    for (var j = 0; j < 3; j++) {
-        if (!color[j])
-            color[j] = 0.000000001;
+
+
+function clamp_value(value) {
+    if (value > 1)
+        value = 1;
+    else if (value < 0)
+        value = 0;
+    return value;
+}
+
+function clamp_array(arr) {
+    for (var i = 0; i < arr.length; ++i) {
+        arr[i] = clamp_value(arr[i]);
     }
+    return arr;
+}
 
 
-
-    var sum = K[0] * color[0] + K[1] * color[1] + K[2] * color[2];
-    //sum*=0.9;
-    var coeff = Ynew / sum;
-
-
-
-    for (var j = 0; j < 3; j++) {
-        color[j] *= coeff;
+function clamp_arr_zero(arr) {
+    for (var j = 0; j < arr.length; ++j) {
+        arr[j] = Math.max(epsilon, arr[j]);
     }
+    return arr;
+}
+
+function toYrgb(color) {
+    var Yrgb = [0, 0, 0];
+    Yrgb[0] = K_R * color[0];
+    Yrgb[1] = K_G * color[1];
+    Yrgb[2] = K_B * color[2];
+    return Yrgb;
+}
 
 
-    var index = rgb_max_i(color);
-
-
-
-    if (color[index] > 1) {
-        color[index] = 1;
-        sum = 0;
-
-        for (var j = 0; j < 3; j++) {
-            if (j == index) continue;
-            sum += color[j] * K[j]
-        }
-        coeff = (Ynew - K[index]) / sum;  //color[index] = 1
-
-        for (var j = 0; j < 3; j++) {
-            if (j == index) continue;
-            color[j] *= coeff;
-        }
-
-
-
-        var index2 = rgb_max_i(color, index);
-        //color[index2] *= coeff;
-        if (color[index2] > 1) {
-            color[index2] = 1;
-            var index3;
-            for (var j = 0; j < 3; j++) {
-                if (j == index || j == index2) continue;
-                sum = color[j] * K[j]
-                index3 = j;
-            }
-            coeff = (Ynew - K[index] - K[index2]) / sum;
-
-            color[index3] *= coeff;
-
-            if (color[index3] > 1)
-                color[index3] = 1;
-
-        }
-
-    }
-
+function fromYrgb(Yrgb) {
+    var color = [0, 0, 0];
+    color[0] = Yrgb[0] / K_R;
+    color[1] = Yrgb[1] / K_G;
+    color[2] = Yrgb[2] / K_B;
     return color;
+}
+
+function arr_sum(arr) {
+    var sum = 0;
+    for (var i = 0; i < arr.length; ++i) {
+        sum += arr[i];
+    }
+    return sum;
+}
+
+function arr_multiply(arr, coeff, indexs = []) {
+    var arr_pow = [...arr];
+    for (var i = 0; i < arr.length; ++i) {
+        if (indexs.includes(i)) continue;
+        arr_pow[i] = arr[i] * coeff;
+    }
+    return arr_pow;
+}
+
+
+function arr_plus(arr, diff, indexs = []) {
+    var arr_new = [...arr];
+    for (var i = 0; i < arr.length; ++i) {
+        if (indexs.includes(i)) continue;
+        arr_new[i] = arr[i] + diff;
+    }
+    return arr_new;
+}
+
+
+function check_Yrgb(arr, no_index = -1) {
+    for (var i = 0; i < arr.length; i++) {
+        if (i == no_index) continue; //arr[i] == 1.0
+        if (arr[i] > K[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+function array_normalize(arr) {
+    var array = [...arr];
+    var sum = arr_sum(array);
+    for (var i = 0; i < array.length; i++) {
+        array[i] = array[i] / sum;
+    }
+    return array;
 }
 
 
@@ -165,29 +202,64 @@ function partLuminance(rgb, Ypart, Ysum) {
 };
 
 
-// Tools ----------------------------------------------------------------
 
-function check_value(val) {
-    if (val.upd === false) {
-        val.upd = true;
-        return false;
+function changeY(c, Ynew) {
+    var color = [...c];
+    color = clamp_arr_zero(color);
+    color = toYrgb(color);
+    color = array_normalize(color);
+    color = arr_multiply(color, Ynew);
+    var index = color_max_i(color);
+    if (color[index] > K[index]) {
+        color[index] = 0;
+
+        var index2 = color_max_i(color);
+        if (color[index2] > K[index2]) {
+            color[index2] = K[index2];
+        }
+
+        color[index] = K[index];
+
+        var diff = Ynew - arr_sum(color);
+
+        var coeff = [0, 0, 0];
+        coeff[0] = K[0] - color[0];
+        coeff[1] = K[1] - color[1];
+        coeff[2] = K[2] - color[2];
+
+        coeff = array_normalize(coeff);
+
+        color[0] += coeff[0] * diff;
+        color[1] += coeff[1] * diff;
+        color[2] += coeff[2] * diff;
     }
-    return true;
+
+    color = fromYrgb(color);
+    console.log(YfromRGB(color))
+    console.log(color);
+    color = clamp_array(color);
+    return color;
 }
+
+
+
+
+// Tools ----------------------------------------------------------------
 
 function elem_vis(elem, flag) {
     var str = flag ? "" : "none";
     elem.domElement.style.display = str;
 }
 
-function rgb_max_i(arr, no_index = -1) {
-    var max = 0;
+
+
+function color_max_i(color) {
+    var diff = 100;
     var index = 0;
 
-    for (var i = 0; i < arr.length; i++) {
-        if (i == no_index) continue; //arr[i] == 1.0
-        if (arr[i] > max) {
-            max = arr[i];
+    for (var i = 0; i < 3; i++) {
+        if ((K[i] - color[i]) < diff) {
+            diff = (K[i] - color[i]);
             index = i;
         }
     }
@@ -219,7 +291,7 @@ class MaterialMaster {
     init(m) {
         this.material = m;
         this.init_gui();
-        this.setType();
+        this.updateType();
     }
 
     init_gui() {
@@ -238,138 +310,47 @@ class MaterialMaster {
         var gui = new GUI({ name: "Material" });
 
         Props.Color = gui.addColor(def_props, 'Color').name('Color').listen();
-        Props.Color.onChange(value => this.setColor());
+        Props.Color.onChange(value => this.updateColor());
 
         Props.Type = gui.add(def_props, 'Type', ["Metallic", "Painted", "Transparent"]).name('Material Type').listen();
-        Props.Type.onChange(value => this.setType());
+        Props.Type.onChange(value => this.updateType());
 
         Props.Refl = gui.add(def_props, 'Refl').min(0.00).max(0.90).step(0.01).name('Reflection factor').listen();
-        Props.Refl.onChange(value => this.setRefl());
+        Props.Refl.onChange(value => this.updateRefl());
 
         Props.Kspec_refl = gui.add(def_props, 'Kspec_refl').min(0.00).max(1.00).step(0.01).name('Reflective coating').listen();
-        Props.Kspec_refl.onChange(value => this.setKspec_refl());
+        Props.Kspec_refl.onChange(value => this.updateKspec_refl());
 
         Props.Trans = gui.add(def_props, 'Trans').min(0.00).max(1.00).step(0.01).name('Degree of trans.').listen();
-        Props.Trans.onChange(value => this.setTrans());
+        Props.Trans.onChange(value => this.updateTrans());
 
         Props.n = gui.add(def_props, 'n').min(1.00).max(2.00).step(0.01).name('Refractive index').listen();
-        Props.n.onChange(value => this.setN());
+        Props.n.onChange(value => this.updateN());
     }
 
     // SET ----------------------------------------------------------------
-    setType() {
-        var Props = this.Props;
-        var type = Props.Type.getValue();
-        if (type == "Metallic") {
-            elem_vis(Props.Kspec_refl, true);
-            elem_vis(Props.Trans, false);
-            elem_vis(Props.n, false);
-        }
-        else if (type == "Painted") {
-            elem_vis(Props.Kspec_refl, true);
-            elem_vis(Props.Trans, false);
-            elem_vis(Props.n, false);
-        }
-        else if (type == "Transparent") {
-            elem_vis(Props.Kspec_refl, false);
-            elem_vis(Props.Trans, true);
-            elem_vis(Props.n, true);
-        }
-        this.Type = type;
-        this.update(1);
-    }
+
 
     setColor(Color) {
-        var Props = this.Props;
-        if (!check_value(Props.Color))
-            return;
-
-        if (Color !== undefined) {
-            Props.Color.upd = false;
-            //Props.Color.setValue(Color);
-            //this.Color = Color;
-            return
-        }
-
-        this.Koeff = undefined;
-        this.Color = Props.Color.getValue();
-        this.update(1);
+        this.Props.Color.setValue(Color);
+        this.Color = Color;
     }
+
 
     setRefl(Refl) {
-        var Props = this.Props;
-        var type = Props.Type.getValue();
-
-        if (!check_value(Props.Refl)) return;
-
-        if (Refl === undefined)
-            Refl = Props.Refl.getValue();
-        else {
-            Props.Refl.upd = false;
-            Props.Refl.setValue(Refl);
-            return
-        }
-
-        if (type == "Painted") {
-            this.Koeff = Refl * Props.Kspec_refl.getValue();
-            if (Refl == 0)
-                this.setKspec_refl(0);
-        }
-        else if (type == "Transparent") {
-            this.Koeff = 1.0;
-            if (Refl > (1 - Props.Trans.getValue())) {
-                this.setTrans(1 - Refl);
-            }
-        }
-        this.update(2);
+        this.Props.Refl.setValue(Refl);
     }
+
 
     setKspec_refl(Kspec_refl) {
-        var Props = this.Props;
-        var type = Props.Type.getValue();
-        if (!check_value(Props.Kspec_refl)) return;
-
-        if (Kspec_refl !== undefined) {
-            Props.Kspec_refl.upd = false;
-            Props.Kspec_refl.setValue(Kspec_refl);
-            return
-        }
-
-        Kspec_refl = Props.Kspec_refl.getValue();
-        if (type == "Metallic") {
-            this.Koeff = Kspec_refl;
-            this.update();
-        } else if (type == "Painted") {
-            this.Koeff = Kspec_refl * Props.Refl.getValue();
-            this.update(2);
-        }
-
+        this.Props.Kspec_refl.setValue(Kspec_refl);
     }
+
 
     setTrans(Trans) {
-        var Props = this.Props;
-        if (!check_value(Props.Trans)) return;
-
-        if (Trans === undefined)
-            Trans = Props.Trans.getValue();
-        else {
-            Props.Trans.upd = false;
-            Props.Trans.setValue(Trans);
-            return
-        }
-
-        this.Koeff = 1.0;
-
-        if (Trans > (1 - Props.Refl.getValue()))
-            this.setRefl(1 - Trans);
-
-        this.update(2);
-
+        this.Props.Trans.setValue(Trans);
     }
 
-    setN() {
-        this.update();
-    }
 
     SetMaterial(diff, spec, amb, opacity, Shin, N) {
         this.material.color.setRGB(diff[0], diff[1], diff[2]);      // диффузная часть
@@ -383,11 +364,8 @@ class MaterialMaster {
 
     // GetY ----------------------------------------------------------------
     getYfromRgb() {
-        var color = this.Props.Color.getValue();//this.Color;
-        // sRGB to Y
-        var Yrgb = [0, 0, 0];
-        Yrgb = RGBtoLinear(color);
-
+        var color = this.Color;
+        var Yrgb = RGBtoLinear(color); // sRGB to Y
         return 0.9 * (Yrgb[0] * K_R + Yrgb[1] * K_G + Yrgb[2] * K_B); // 10% идет на поглощение
     }
 
@@ -413,6 +391,85 @@ class MaterialMaster {
     }
 
     //Update ----------------------------------------------------------------
+
+
+    updateType() {
+        var Props = this.Props;
+        var type = Props.Type.getValue();
+        if (type == "Metallic") {
+            elem_vis(Props.Kspec_refl, true);
+            elem_vis(Props.Trans, false);
+            elem_vis(Props.n, false);
+        }
+        else if (type == "Painted") {
+            elem_vis(Props.Kspec_refl, true);
+            elem_vis(Props.Trans, false);
+            elem_vis(Props.n, false);
+        }
+        else if (type == "Transparent") {
+            elem_vis(Props.Kspec_refl, false);
+            elem_vis(Props.Trans, true);
+            elem_vis(Props.n, true);
+        }
+        this.Type = type;
+        this.update(1);
+    }
+
+    updateColor() {
+        this.Koeff = undefined;
+        this.Color = this.Props.Color.getValue();
+        this.update(1);
+    }
+
+    updateRefl() {
+        var Props = this.Props;
+        var type = Props.Type.getValue();
+
+        var Refl = Props.Refl.getValue();
+        if (type == "Painted") {
+            this.Koeff = Refl * Props.Kspec_refl.getValue();
+            if (Refl == 0)
+                this.setKspec_refl(0);
+        }
+        else if (type == "Transparent") {
+            this.Koeff = 1.0;
+            if (Refl > (1 - Props.Trans.getValue())) {
+                this.setTrans(1 - Refl);
+            }
+        }
+        this.update(2);
+
+
+    }
+
+
+    updateKspec_refl() {
+        var Props = this.Props;
+        var type = Props.Type.getValue();
+        var Kspec_refl = Props.Kspec_refl.getValue();
+        if (type == "Metallic") {
+            this.Koeff = Kspec_refl;
+            this.update();
+        } else if (type == "Painted") {
+            this.Koeff = Kspec_refl * Props.Refl.getValue();
+            this.update(2);
+        }
+    }
+
+    updateTrans() {
+        var Props = this.Props;
+        var Trans = Props.Trans.getValue();
+        this.Koeff = 1.0;
+
+        if (Trans > (1 - Props.Refl.getValue()))
+            this.setRefl(1 - Trans);
+
+        this.update(2);
+    }
+
+    updateN() {
+        this.update();
+    }
 
     updateRGB() {
         var Y = this.getYfromProps();
@@ -456,6 +513,7 @@ class MaterialMaster {
                     Trans = K * Refl;
                 }
 
+
                 this.setRefl(Refl);
                 this.setTrans(Trans);
                 break;
@@ -472,9 +530,6 @@ class MaterialMaster {
     }
 
     // Render
-
-
-
     render() {
         var Props = this.Props;
         var type = Props.Type.getValue();
@@ -482,7 +537,7 @@ class MaterialMaster {
         var Refl = Props.Refl.getValue();
         var Trans = Props.Trans.getValue();
 
-        var Yrgb = Props.Color.getValue();
+        var Yrgb = this.Color;
 
         var diff, spec, amb;
         var Shin, N, opacity;
@@ -494,9 +549,14 @@ class MaterialMaster {
             var Ysum = Refl;
 
             Yrgb = changeY(RGBtoLinear(Yrgb), Ysum);
-
             diff = RGBfromLinear(partLuminance(Yrgb, Yd, Ysum));
             spec = RGBfromLinear(partLuminance(Yrgb, Ys, Ysum));
+
+            // Yrgb = changeY(Yrgb, Ysum);
+            // diff = [...Yrgb];
+            // spec = [0, 0, 0];
+
+
 
             amb = spec;
 

@@ -2,10 +2,7 @@
 #include <iostream>
 using namespace std;
 
-
-
 typedef unsigned int u32;
-
 
 struct color3f
 {
@@ -72,6 +69,11 @@ public:
         return color3f(r + rgb.r, g + rgb.g, b + rgb.b);
     }
 
+    color3f operator-(const color3f &rgb)
+    {
+        return color3f(r - rgb.r, g - rgb.g, b - rgb.b);
+    }
+
     bool operator==(const color3f &rgb)
     {
         return (r == rgb.r && g == rgb.g && b == rgb.b);
@@ -103,6 +105,22 @@ public:
         return (*this);
     }
 
+    color3f &operator-=(const color3f &rgb)
+    {
+        r -= rgb.r;
+        g -= rgb.g;
+        b -= rgb.b;
+        return (*this);
+    }
+
+    color3f &operator+=(const color3f &rgb)
+    {
+        r += rgb.r;
+        g += rgb.g;
+        b += rgb.b;
+        return (*this);
+    }
+
     color3f &operator/=(const float &scalar)
     {
         r /= scalar;
@@ -116,6 +134,22 @@ public:
         r *= scalar;
         g *= scalar;
         b *= scalar;
+        return (*this);
+    }
+
+    color3f &operator-=(const float &scalar)
+    {
+        r -= scalar;
+        g -= scalar;
+        b -= scalar;
+        return (*this);
+    }
+
+    color3f &operator+=(const float &scalar)
+    {
+        r += scalar;
+        g += scalar;
+        b += scalar;
         return (*this);
     }
 
@@ -163,7 +197,7 @@ struct vertex3f
         cout << "\n";
     }
 
-    vertex3f(){};
+    vertex3f() {};
 
     vertex3f(const vertex3f &v)
     {
