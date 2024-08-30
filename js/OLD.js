@@ -296,6 +296,146 @@ function fromHSL(hsl) {
     return color;
 }
 
+
+
+function changeLuminance(rgb, Ynew) {
+    var color = color3f(rgb);
+    color = RGBtoLinear(color); // sRGB to linear RGB
+    color = changeY(color, Ynew);  // Change luminance
+    color = RGBfromLinear(color); // linear RGB to sRGB
+    return color;
+}
+
+function updateRGB() {
+    var Y = this.getYfromProps();
+    var color = changeLuminance(this.Color, Y);
+    this.setColor(color);
+}
+
+function clamp_value(value) {
+    if (value > 1)
+        value = 1;
+    else if (value < 0)
+        value = 0;
+    return value;
+}
+function from_luminance(Yrgb) {
+    var color = Yrgb.divide(K);
+    color = color.func(from_linear)
+    return color;
+}
+
+
+
+function clamp_color(color) {
+    color.r = clamp_value(color.r);
+    color.g = clamp_value(color.g);
+    color.b = clamp_value(color.b);
+    return color;
+}
+
+
+function changeY(c, Ynew) {
+    var color = color3f(c);
+    color = clamp_color_zero(color);
+    color = toYrgb(color);
+    color = color.getNorm();
+    color = color.multiply(Ynew);
+    var index = color_max_i(color);
+    if (color[index] > K[index]) {
+        color[index] = 0;
+
+        var index2 = color_max_i(color);
+        if (color[index2] > K[index2]) {
+            color[index2] = K[index2];
+        }
+
+        color[index] = K[index];
+
+        var diff = Ynew - color.sum();
+
+        var coeff = [0, 0, 0];
+        coeff[0] = K[0] - color[0];
+        coeff[1] = K[1] - color[1];
+        coeff[2] = K[2] - color[2];
+
+        coeff = coeff.getNorm();
+
+        color[0] += coeff[0] * diff;
+        color[1] += coeff[1] * diff;
+        color[2] += coeff[2] * diff;
+    }
+
+    color = fromYrgb(color);
+    console.log(YfromRGB(color))
+    console.log(color);
+    color = clamp_color(color);
+    return color;
+}
+
+
+
+function RGBtoLinear(color) {
+    return color.func(toLinear);
+}
+
+function RGBfromLinear(color) {
+    return color.func(fromLinear);
+}
+
+
+// Change rgb by Luminance ----------------------------------------------------------------
+
+function YfromRGB(rgb) {
+    return rgb.multiply(K).sum();
+}
+
+
+function toYrgb(color) {
+    return color.multiply(K);
+}
+
+function fromYrgb(Yrgb) {
+    return Yrgb.divide(K);
+}
+
+
+
+function color_max_i(color) {
+    var diff = 100;
+    var index = 0;
+
+    for (var i = 0; i < 3; i++) {
+        if ((K[i] - color[i]) < diff) {
+            diff = (K[i] - color[i]);
+            index = i;
+        }
+    }
+    return index;
+}
+
+
+function arr_plus(arr, diff, indexs = []) {
+    var arr_new = [...arr];
+    for (var i = 0; i < arr.length; ++i) {
+        if (indexs.includes(i)) continue;
+        arr_new[i] = arr[i] + diff;
+    }
+    return arr_new;
+}
+
+
+function check_Yrgb(arr, no_index = -1) {
+    for (var i = 0; i < arr.length; i++) {
+        if (i == no_index) continue; //arr[i] == 1.0
+        if (arr[i] > K[i]) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+
 // HSL  (error)
 function changeY0(c, Ynew) {
     var color = [...c];

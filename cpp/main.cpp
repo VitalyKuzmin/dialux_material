@@ -131,44 +131,34 @@ namespace material_utils
         return srgb;
     }
 
-    static color3f to_luminance(const color3f &color)
+    static color3f to_luminance(color3f color)
     {
-        color3f luminance;
-
-        luminance.r = to_linear(color.r) * K_R;
-        luminance.g = to_linear(color.g) * K_G;
-        luminance.b = to_linear(color.b) * K_B;
-        return luminance;
+        return to_linear(color) * K;
     }
 
-    static color3f from_luminance(const color3f &luminance)
+    static color3f from_luminance(color3f luminance)
     {
-        color3f color;
-
-        color.r = from_linear(luminance.r / K_R);
-        color.g = from_linear(luminance.g / K_G);
-        color.b = from_linear(luminance.b / K_B);
-        return color;
+        return from_linear(luminance / K);
     }
 
-    static color3f to_Yrgb(const color3f &linear)
-    {
-        color3f Yrgb;
+    // static color3f to_Yrgb(color3f &linear)
+    // {
+    //     // color3f Yrgb;
 
-        Yrgb.r = linear.r * K_R;
-        Yrgb.g = linear.g * K_G;
-        Yrgb.b = linear.b * K_B;
-        return Yrgb;
-    }
+    //     // Yrgb.r = linear.r * K_R;
+    //     // Yrgb.g = linear.g * K_G;
+    //     // Yrgb.b = linear.b * K_B;
+    //     return (linear * K);
+    // }
 
-    static color3f from_Yrgb(const color3f &Yrgb)
-    {
-        color3f linear;
-        linear.r = Yrgb.r / K_R;
-        linear.g = Yrgb.g / K_G;
-        linear.b = Yrgb.b / K_B;
-        return linear;
-    }
+    // static color3f from_Yrgb(const color3f &Yrgb)
+    // {
+    //     color3f linear;
+    //     linear.r = Yrgb.r / K_R;
+    //     linear.g = Yrgb.g / K_G;
+    //     linear.b = Yrgb.b / K_B;
+    //     return linear;
+    // }
 
     static float getY(u32 type, float reflection_factor, float reflection_coating, float transparency)
     {
@@ -192,39 +182,6 @@ namespace material_utils
             break;
         }
         return Y;
-    }
-
-    // GetY ----------------------------------------------------------------
-    static float getYfromRgb(const color3f &color)
-    {
-        color3f Yrgb = to_luminance(color); // sRGB to Y
-        float Y = 0.9f * Yrgb.sum();        // 10% идет на поглощение
-        return Y;
-    }
-
-    // Change rgb by Luminance -----------------------------------------------------------------------
-    static unsigned int rgb_max_i(float *arr, unsigned int no_index = -1)
-    {
-        float max = 0;
-        unsigned int index = 0;
-
-        for (int i = 0; i < 3; i++)
-        {
-            if (i == no_index)
-                continue;
-            if (arr[i] > max)
-            {
-                max = arr[i];
-                index = i;
-            }
-        }
-        return index;
-    };
-
-    static float YfromRGB(float rgb[3])
-    {
-
-        return K_R * rgb[0] + K_G * rgb[1] + K_B * rgb[2];
     }
 
     static void clamp_color_zero(color3f &c)
@@ -262,6 +219,8 @@ namespace material_utils
 
     static color3f changeY(color3f Yrgb, const float &Ynew)
     {
+        Yrgb = to_luminance(Yrgb);
+
         clamp_color_zero(Yrgb);
         Yrgb = Yrgb.getNorm() * Ynew;
         float diff = check_Yrgb(Yrgb);
@@ -271,26 +230,17 @@ namespace material_utils
             Yrgb += coeff * diff;
         }
 
-        return Yrgb;
+        return Yrgb / K; // to linear
     }
 
-    static color3f changeLuminance(const color3f rgb, const float &Y)
-    {
-        color3f color;
-        color = to_luminance(rgb);
-        color = changeY(color, Y);
-        color = from_luminance(color);
-        return color;
-    };
-
-    static color3f partLuminance(color3f rgb, const float &Ypart, const float &Ysum)
-    {
-        color3f color(rgb);
-
-        color *= (Ypart / Ysum);
-
-        return color;
-    };
+    // static color3f changeLuminance(const color3f rgb, const float &Y)
+    // {
+    //     color3f color;
+    //     color = to_luminance(rgb);
+    //     color = changeY(color, Y);
+    //     color = from_luminance(color);
+    //     return color;
+    // };
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -319,7 +269,9 @@ private:
     float m_transparency = 1.0f;       ///< transparency (0 - completely transparent, 1.0 - completely opaque)
     float m_refractive = 1.0f;         ///< index of refraction
 
-    float m_coeff = -1.0f; ///<  coefficient for transition between material types
+    float m_coeff = 0.0f;   ///<  coefficient for transition between material types
+    float m_Y = 0.0f;       ///<  global Y for material
+    float m_coeff_T = 0.0f; ///<  coefficient for Transparent material
 
     // energetic (calc)
     color3f m_diffuse_spectrum;      ///< коэффициент диффузного отражения
@@ -567,7 +519,10 @@ public:
         return (((m_diffuse_spectrum.r + m_specular_spectrum.r + m_transmission_spectrum.r) <= 1.0f) && ((m_diffuse_spectrum.g + m_specular_spectrum.g + m_transmission_spectrum.g) <= 1.0f) && ((m_diffuse_spectrum.b + m_specular_spectrum.b + m_transmission_spectrum.b) <= 1.0f)) ? true : false;
     }
 
+    void setReflectionFactor(float reflection_factor) { m_reflection_factor = reflection_factor; }
     const float &getReflectionFactor() const { return m_reflection_factor; }
+
+    void setReflectionCoating(float reflection_coating) { m_reflection_coating = reflection_coating; }
     const float &getReflectionCoating() const { return m_reflection_coating; }
 
     void setTransparency(float transparency) { m_transparency = transparency; }
@@ -578,6 +533,12 @@ public:
 
     void setCoefficientTransition(float coeff) { m_coeff = coeff; }
     const float &getCoefficientTransition() const { return m_coeff; }
+
+    void setCoefficientT(float coeff) { m_coeff_T = coeff; }
+    const float &getCoefficientT() const { return m_coeff_T; }
+
+    void setGlobalY(float coeff) { m_Y = coeff; }
+    const float &getGlobalY() const { return m_Y; }
 
     void setShininess(float shininess) { m_shininess = shininess; }
     const float &getShininess() const { return m_shininess; }
@@ -722,19 +683,18 @@ public:
         setRefractive(refractive);
         setShininess(shininess);
 
-        recalcMaterial();
+
+        recalcProps(); //recalcMaterial();
 
         return isValidSpectrums();
     }
 
-    bool updateColor(const color3f &color)
+    float getYfromRgb()
     {
-        setCoefficientTransition(-1);
-        setColor(color);
-        recalcProps();
-
-        return recalcMaterial();
-    }
+        color3f Yrgb = material_utils::to_luminance(m_color); // sRGB to Y
+        float Y = 0.9f * Yrgb.sum();                          // 10% идет на поглощение
+        return Y;
+    };
 
     bool updateType(u32 type)
     {
@@ -742,9 +702,15 @@ public:
             return false;
 
         m_type = type;
-        recalcProps();
 
-        return recalcMaterial();
+        return recalcProps();
+    }
+
+    bool updateColor(const color3f &color)
+    {
+        setColor(color);
+        setGlobalY(getYfromRgb());
+        return recalcProps();
     }
 
     bool updateReflectionFactor(float reflection_factor)
@@ -760,21 +726,23 @@ public:
         if (m_reflection_factor == reflection_factor)
             return false;
 
-        m_reflection_factor = reflection_factor;
+        setReflectionFactor(reflection_factor);
 
         if (isTypePainted())
         {
-            m_coeff = m_reflection_factor * m_reflection_coating;
-            if (m_reflection_factor == 0.0f)
-                m_reflection_coating = 0.0f;
+
+            if (reflection_factor == 0.0f)
+                setReflectionCoating(0.0f);
         }
         else if (isTypeTransparent())
         {
-            m_coeff = 1.0f;
-            if (m_reflection_factor > (1.0f - m_transparency))
-                m_transparency = 1.0f - m_reflection_factor;
+            if (reflection_factor > (1.0f - m_transparency))
+            {
+                setTransparency(1 - 1.0f - reflection_factor);
+            }
         }
 
+        recalcGlobalYK();
         return recalcMaterial();
     }
 
@@ -788,17 +756,9 @@ public:
         if (m_reflection_coating == reflection_coating)
             return false;
 
-        m_reflection_coating = reflection_coating;
+        setReflectionCoating(reflection_coating);
 
-        if (isTypeMetallic())
-        {
-            m_coeff = m_reflection_coating;
-        }
-        else if (isTypePainted())
-        {
-            m_coeff = m_reflection_coating * m_reflection_factor;
-        }
-
+        recalcGlobalYK();
         return recalcMaterial();
     }
 
@@ -812,14 +772,14 @@ public:
         if (m_transparency == transparency)
             return false;
 
-        m_transparency = transparency;
-        m_coeff = 1.0f;
+        setTransparency(transparency);
 
-        if (m_transparency > (1.0f - m_reflection_factor))
+        if (transparency > (1.0f - m_reflection_factor))
         {
-            m_reflection_factor = 1.0f - m_transparency;
+            m_reflection_factor = 1.0f - transparency;
         }
 
+        recalcGlobalYK();
         return recalcMaterial();
     }
 
@@ -859,12 +819,16 @@ private:
 
             float Ysum = ReflF;
 
-            color = material_utils::changeY(material_utils::to_luminance(color), Ysum);
-            color = material_utils::from_Yrgb(color); // to linear
+            
 
-            diff = material_utils::partLuminance(color, Yd, Ysum);
-            spec = material_utils::partLuminance(color, Ys, Ysum);
-            amb = spec;
+            if (Ysum > 0) {
+                color3f Yrgb = material_utils::changeY(color, Ysum);
+                diff = Yrgb * (Yd / Ysum);
+                spec = Yrgb * (Ys / Ysum);
+                amb = spec;
+            }
+
+
             trans.set(0.0f, 0.0f, 0.0f);
 
             opacity = 0.0f;
@@ -879,12 +843,17 @@ private:
 
             float Ysum = ReflF;
 
-            color = material_utils::changeY(material_utils::to_luminance(color), Ysum);
-            color = material_utils::from_Yrgb(color); // to linear
+            
 
-            diff = material_utils::partLuminance(color, Yd, Ysum);
-            spec.set(Ys, Ys, Ys); // grayscale
-            amb = spec;
+
+            if (Ysum > 0) {
+                color3f Yrgb = material_utils::changeY(color, Ysum);
+                diff = Yrgb * (Yd / Ysum);
+                spec.set(Ys, Ys, Ys); // grayscale
+                amb = spec;
+            }
+                
+
             trans.set(0.0f, 0.0f, 0.0f);
 
             opacity = 0.0f;
@@ -895,19 +864,23 @@ private:
         {
             float Ysum = ReflF + Trans;
 
-            color = material_utils::changeY(material_utils::to_luminance(color), Ysum);
-            color = material_utils::from_Yrgb(color); // to linear
+            color3f Yrgb = material_utils::changeY(color, Ysum);
 
             diff.set(0, 0, 0);
-            spec = material_utils::partLuminance(color, ReflF, Ysum);
-            trans = material_utils::partLuminance(color, Trans, Ysum);
+            if (Ysum > 0) {
+                spec = Yrgb * (ReflF / Ysum);
+                trans = Yrgb * (Trans / Ysum);
+                opacity = Trans / Ysum;
+                amb = Yrgb;
+            }
 
-            amb = color;
+            
 
-            opacity = Trans / Ysum;
+            
             Shin = 0.3f; // 40/128
             N = N;
         }
+
         return convertColors(amb, diff, spec, trans, opacity, N, Shin);
     };
 
@@ -931,11 +904,39 @@ private:
         return true;
     }
 
-    bool recalcRGB()
+    bool recalcGlobalYK()
     {
-        float Y = material_utils::getY(m_type, m_reflection_factor, m_reflection_coating, m_transparency);
-        color3f color = material_utils::changeLuminance(m_color, Y);
 
+        float ReflF = getReflectionFactor();
+        float ReflC = getReflectionCoating();
+        float Trans = getTransparency();
+
+        if (isTypeMetallic())
+        {
+            setCoefficientTransition(ReflC);
+            setGlobalY(ReflF);
+        }
+        else if (isTypePainted())
+        {
+
+            float K = ReflC * ReflF;
+            float Y = (ReflF - K) / (1 - K);
+
+            setCoefficientTransition(K);
+            setGlobalY(Y);
+        }
+        else if (isTypeTransparent())
+        {
+            float K_T = Trans / ReflF;
+            float Y = ReflF + Trans;
+            if (Trans > 0)
+            {
+                setCoefficientTransition(1.0f);
+            }
+
+            setCoefficientT(K_T);
+            setGlobalY(Y);
+        }
         return true;
     }
 
@@ -947,69 +948,37 @@ private:
             return false;
         }
 
-        float Y = material_utils::getYfromRgb(m_color);
+        float Y = getGlobalY();
         float K = getCoefficientTransition();
+        float K_T = getCoefficientT();
 
-        // float reflection_factor = m_reflection_factor;
-        // float reflection_coating = m_reflection_coating;
-        // float transparency = m_transparency;
-
-        float reflection_factor(0);
-        float reflection_coating(0);
-        float transparency(0);
-
-        switch (m_type)
+        if (isTypeMetallic())
         {
 
-        case material_type::metallic:
+            setReflectionCoating(K);
+            setReflectionFactor(Y);
+        }
+        else if (isTypePainted())
         {
-            if (K >= 0)
-                m_reflection_coating = K;
-            m_reflection_factor = Y;
+            float ReflF = K + (1 - K) * Y;
+            float ReflC = ReflF ? K / ReflF : 0;
+            if (ReflF > 0.9)
+                ReflF = 0.9;
 
-            break;
+            setReflectionFactor(ReflF);
+            setReflectionCoating(ReflC);
         }
-
-        case material_type::painted:
+        else if (isTypeTransparent())
         {
-            if (K < 0)
-                K = m_reflection_coating * m_reflection_factor;
+            float ReflF = Y / (1 + K_T);
+            float Trans = Y - ReflF;
 
-            m_reflection_factor = K + (1 - K) * Y;
-            m_reflection_coating = m_reflection_factor ? K / m_reflection_factor : 0.0f;
-
-            if (K >= 0 && m_reflection_factor > 0.9f)
-                m_reflection_factor = 0.9f;
-
-            // m_reflection_factor = reflection_factor;
-            // m_reflection_coating = reflection_coating;
-            break;
+            setReflectionFactor(ReflF);
+            setTransparency(Trans);
         }
 
-        case material_type::transparent:
-        {
-
-            if (reflection_factor == 0)
-            {
-                transparency = Y;
-            }
-            else
-            {
-                if (K == -1)
-                    K = transparency / reflection_factor;
-                reflection_factor = Y / (1 + K);
-                transparency = K * reflection_factor;
-            }
-
-            break;
-        }
-        }
-
-        m_reflection_factor = reflection_factor;
-        m_reflection_coating = reflection_coating;
-        m_transparency = transparency;
-
-        return true;
+        recalcGlobalYK();
+        return recalcMaterial();
     }
 };
 

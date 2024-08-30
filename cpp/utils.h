@@ -64,6 +64,16 @@ public:
         return color3f(r * rgb.r, g * rgb.g, b * rgb.b);
     }
 
+    color3f operator/(const float &scalar)
+    {
+        return color3f(r / scalar, g / scalar, b / scalar);
+    }
+
+    color3f operator/(const color3f &rgb)
+    {
+        return color3f(r / rgb.r, g / rgb.g, b / rgb.b);
+    }
+
     color3f operator+(const color3f &rgb)
     {
         return color3f(r + rgb.r, g + rgb.g, b + rgb.b);
