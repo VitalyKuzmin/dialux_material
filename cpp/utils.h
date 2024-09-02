@@ -9,9 +9,11 @@ struct color3f
 public:
     float r, g, b;
 
-    // color3f() { set(0.0, 0.0, 0.0); }
+    color3f() { set(0.0, 0.0, 0.0); }
 
-    color3f(float r = 0.0f, float g = 0.0f, float b = 0.0f) { set(r, g, b); }
+    color3f(const float &scalar) { set(scalar, scalar, scalar); }
+
+    color3f(float r, float g, float b) { set(r, g, b); }
 
     color3f(const color3f &rgb)
     {
@@ -87,6 +89,31 @@ public:
     bool operator==(const color3f &rgb)
     {
         return (r == rgb.r && g == rgb.g && b == rgb.b);
+    }
+
+    bool operator==(const float &scalar)
+    {
+        return (r == scalar && g == scalar && b == scalar);
+    }
+
+    bool operator>(const color3f &rgb)
+    {
+        return (r > rgb.r && g > rgb.g && b > rgb.b);
+    }
+
+    bool operator>(const float &scalar)
+    {
+        return (r > scalar && g > scalar && b > scalar);
+    }
+
+    bool operator<(const color3f &rgb)
+    {
+        return (r < rgb.r && g < rgb.g && b < rgb.b);
+    }
+
+    bool operator<(const float &scalar)
+    {
+        return (r < scalar && g < scalar && b < scalar);
     }
 
     bool operator!=(const color3f &rgb)
@@ -167,6 +194,12 @@ public:
     {
         float Max = max();
         return color3f((r / Max), (g / Max), (b / Max));
+    }
+
+    color3f getNormalize()
+    {
+        float Sum = sum();
+        return color3f((r / Sum), (g / Sum), (b / Sum));
     }
 };
 

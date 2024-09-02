@@ -141,25 +141,6 @@ namespace material_utils
         return from_linear(luminance / K);
     }
 
-    // static color3f to_Yrgb(color3f &linear)
-    // {
-    //     // color3f Yrgb;
-
-    //     // Yrgb.r = linear.r * K_R;
-    //     // Yrgb.g = linear.g * K_G;
-    //     // Yrgb.b = linear.b * K_B;
-    //     return (linear * K);
-    // }
-
-    // static color3f from_Yrgb(const color3f &Yrgb)
-    // {
-    //     color3f linear;
-    //     linear.r = Yrgb.r / K_R;
-    //     linear.g = Yrgb.g / K_G;
-    //     linear.b = Yrgb.b / K_B;
-    //     return linear;
-    // }
-
     static float getY(u32 type, float reflection_factor, float reflection_coating, float transparency)
     {
         if (type == material_type::undefined)
@@ -222,11 +203,11 @@ namespace material_utils
         Yrgb = to_luminance(Yrgb);
 
         clamp_color_zero(Yrgb);
-        Yrgb = Yrgb.getNorm() * Ynew;
+        Yrgb = Yrgb.getNormalize() * Ynew;
         float diff = check_Yrgb(Yrgb);
         if (diff > 0)
         {
-            color3f coeff = (K - Yrgb).getNorm();
+            color3f coeff = (K - Yrgb).getNormalize();
             Yrgb += coeff * diff;
         }
 
@@ -284,6 +265,8 @@ private:
     color3f m_specular;
     color3f m_emission;
     float m_shininess = 0.5f;
+    float m_N = 1.0f;
+    float m_opacity = 1.0f;
 
 #ifdef _HIDE
     // textures params (common)
@@ -579,6 +562,13 @@ public:
     void setEmissionColor(const color3f &color) { m_emission = color; }
     const color3f &getEmissionColor() const { return m_emission; }
 
+    void setDiffuseSpectrumColor(const color3f &color) { m_diffuse_spectrum = color; }
+    const color3f &getDiffuseSpectrumColor() const { return m_diffuse_spectrum; }
+    void setSpecularSpectrumColor(const color3f &color) { m_specular_spectrum = color; }
+    const color3f &getSpecularSpectrumColor() const { return m_specular_spectrum; }
+    void setTransmissionSpectrumColor(const color3f &color) { m_transmission_spectrum = color; }
+    const color3f &getTransmissionSpectrumColor() const { return m_transmission_spectrum; }
+
     void setColors(const color3f &abient, const color3f &diffuse, const color3f &specular, const color3f &emission)
     {
         m_ambient = abient;
@@ -683,8 +673,7 @@ public:
         setRefractive(refractive);
         setShininess(shininess);
 
-
-        recalcProps(); //recalcMaterial();
+        recalcProps(); // recalcMaterial();
 
         return isValidSpectrums();
     }
@@ -819,15 +808,13 @@ private:
 
             float Ysum = ReflF;
 
-            
-
-            if (Ysum > 0) {
+            if (Ysum > 0)
+            {
                 color3f Yrgb = material_utils::changeY(color, Ysum);
                 diff = Yrgb * (Yd / Ysum);
                 spec = Yrgb * (Ys / Ysum);
                 amb = spec;
             }
-
 
             trans.set(0.0f, 0.0f, 0.0f);
 
@@ -843,16 +830,13 @@ private:
 
             float Ysum = ReflF;
 
-            
-
-
-            if (Ysum > 0) {
+            if (Ysum > 0)
+            {
                 color3f Yrgb = material_utils::changeY(color, Ysum);
                 diff = Yrgb * (Yd / Ysum);
                 spec.set(Ys, Ys, Ys); // grayscale
                 amb = spec;
             }
-                
 
             trans.set(0.0f, 0.0f, 0.0f);
 
@@ -867,16 +851,14 @@ private:
             color3f Yrgb = material_utils::changeY(color, Ysum);
 
             diff.set(0, 0, 0);
-            if (Ysum > 0) {
+            if (Ysum > 0)
+            {
                 spec = Yrgb * (ReflF / Ysum);
                 trans = Yrgb * (Trans / Ysum);
                 opacity = Trans / Ysum;
                 amb = Yrgb;
             }
 
-            
-
-            
             Shin = 0.3f; // 40/128
             N = N;
         }
@@ -884,22 +866,21 @@ private:
         return convertColors(amb, diff, spec, trans, opacity, N, Shin);
     };
 
-    bool convertColors(const color3f &ambient, const color3f &diffuse, const color3f &specular, const color3f &transmission, float transparency, float refractive, float shininess)
+    bool convertColors(const color3f &ambient, const color3f &diffuse, const color3f &specular, const color3f &transmission, float opacity, float N, float shininess)
     {
         // linear
         m_diffuse_spectrum = diffuse;
         m_specular_spectrum = specular;
         m_transmission_spectrum = transmission;
 
-        m_transparency = transparency;
-        m_refractive = refractive;
-        m_shininess = shininess;
-
         // graphics (opengl data)
-        m_ambient = material_utils::from_linear(ambient);
         m_diffuse = material_utils::from_linear(diffuse);
         m_specular = material_utils::from_linear(specular);
-        // m_emission      = ambient;
+        m_ambient = material_utils::from_linear(ambient);
+
+        m_opacity = opacity;
+        m_N = N;
+        m_shininess = shininess;
 
         return true;
     }
@@ -1082,10 +1063,103 @@ namespace
 
 namespace tests
 {
-
-    void material_test(Material mtl)
+    float round_to(float value, unsigned int rate)
     {
+        return round(value * pow(10, rate)); /// pow(10, rate)
+    }
 
+    color3f round_to(color3f color, unsigned int rate)
+    {
+        color.r = round_to(color.r, rate);
+        color.g = round_to(color.g, rate);
+        color.b = round_to(color.b, rate);
+        return color;
+    }
+
+    void material_error(Material mtl, bool is_not_error)
+    {
+        if (!is_not_error)
+        {
+            cout << "Error: -----------------------------------------------------------" << endl;
+            logMaterial(mtl);
+        }
+        else
+        {
+            // cout << "Valid: -----------------------------------------------------------" << endl;
+            //  logMaterial(mtl);
+        }
+    }
+
+    // template <typename T>
+    // void test_param(Material mtl, unsigned int accuracy, T param, T value)
+    //{
+    //     float p = round_to(param, accuracy);
+    //     value = round_to(value, accuracy);
+    //     material_error(mtl, p == value);
+    // }
+
+    void test_param(Material mtl, unsigned int accuracy, float param, float value)
+    {
+        float p = round_to(param, accuracy);
+        value = round_to(value, accuracy);
+        material_error(mtl, p == value);
+    }
+
+    void test_param(Material mtl, unsigned int accuracy, color3f color, color3f value)
+    {
+        color3f c = round_to(color, accuracy);
+        value = round_to(value, accuracy);
+        material_error(mtl, c == value);
+    }
+
+    void test_material_params(Material mtl, unsigned int accuracy,
+                              float reflection_factor = -1,
+                              float reflection_coating = -1,
+                              float transparency = -1)
+    {
+        if (reflection_factor > 0)
+        {
+            test_param(mtl, accuracy, mtl.getReflectionFactor(), reflection_factor);
+        }
+        if (reflection_coating > 0)
+        {
+            test_param(mtl, accuracy, mtl.getReflectionCoating(), reflection_coating);
+        }
+        if (transparency > 0)
+        {
+            test_param(mtl, accuracy, mtl.getTransparency(), transparency);
+        }
+    }
+
+    void test_material_colors(Material mtl, unsigned int accuracy,
+                              color3f diffuse = color3f(-1),
+                              color3f specular = color3f(-1),
+                              color3f transmission = color3f(-1))
+    {
+        if (diffuse > 0)
+        {
+            test_param(mtl, accuracy, mtl.getDiffuseSpectrumColor(), diffuse);
+        }
+        if (specular > 0)
+        {
+            test_param(mtl, accuracy, mtl.getSpecularSpectrumColor(), specular);
+        }
+        if (transmission > 0)
+        {
+            test_param(mtl, accuracy, mtl.getTransmissionSpectrumColor(), transmission);
+        }
+    }
+
+    void test_material(Material mtl, unsigned int accuracy,
+                       float reflection_factor, float reflection_coating = -1, float transparency = -1,
+                       color3f diffuse = color3f(-1), color3f specular = color3f(-1), color3f transmission = color3f(-1))
+    {
+        test_material_params(mtl, accuracy, reflection_factor, reflection_coating, transparency);
+        test_material_colors(mtl, accuracy, diffuse, specular, transmission);
+    }
+
+    void material_1_test(Material mtl)
+    {
         if (!mtl.isValidSpectrums())
         {
             cout << "Error: -----------------------------------------------------------" << endl;
@@ -1100,7 +1174,6 @@ namespace tests
 
     void test_input_color(Material mtl, float color_step = 0.1f)
     {
-
         u32 color_count = 1.0f / color_step;
 
         color3f color;
@@ -1122,7 +1195,7 @@ namespace tests
 
                     mtl.updateColor(color);
 
-                    material_test(mtl);
+                    material_1_test(mtl);
                 }
             }
         }
@@ -1133,7 +1206,7 @@ namespace tests
         for (u32 t = material_type::transparent; t <= material_type::painted; ++t)
         {
             mtl.updateType(t);
-            material_test(mtl);
+            material_1_test(mtl);
             test_input_color(mtl, color_step);
         }
     }
@@ -1153,21 +1226,21 @@ namespace tests
             reflection_factor += reflection_factor_step;
 
             mtl.updateReflectionFactor(reflection_factor);
-            material_test(mtl);
+            material_1_test(mtl);
 
             for (u32 j = 0; j < reflection_coating_count; ++j)
             {
                 reflection_coating += reflection_coating_step;
 
                 mtl.updateReflectingCoating(reflection_coating);
-                material_test(mtl);
+                material_1_test(mtl);
 
                 for (u32 k = 0; k < transperancy_count; ++k)
                 {
                     transperancy += transperancy_step;
 
                     mtl.updateTransparency(transperancy);
-                    material_test(mtl);
+                    material_1_test(mtl);
 
                     test_type(mtl, color_step);
                 }
@@ -1185,7 +1258,7 @@ int main()
     Material mtl;
 
     // Что должно рабоать с разными параметрами создание материала (считаем что все пришло из файла json) внутри проверка isValidSpectrums
-    mtl.create("", "red", material_type::painted, color3f(1.0f, 0.5f, 0.2f), 0.5f, 0.5f, 1.0f, 1.2f, 5.0f);
+    mtl.create("", "red", material_type::metallic, color3f(1.0f, 0.5f, 0.2f), 0.5f, 0.0f, 1.0f, 1.2f, 5.0f);
 
     logMaterial(mtl); //"Init material"
 
@@ -1193,7 +1266,7 @@ int main()
     // после всех методов должна отрабатывать проверка isValidSpectrums:
     // mtl.isValidSpectrums()
 
-    if (1)
+    if (0)
     {
 
         // 1
@@ -1225,12 +1298,32 @@ int main()
         logMaterial(mtl); //"Change type to Painted"
     }
 
-    if (0)
+    if (1)
     {
-        mtl.updateType(material_type::painted);
-        mtl.updateColor(color3f(0.2f, 0.2f, 0.2f));
-        mtl.updateReflectionFactor(0.4f);
+        mtl.updateType(material_type::metallic);
         mtl.updateReflectingCoating(0.0f);
+        mtl.updateColor(color3f(0.4f, 0.2f, 0.2f)); // (102,51,51)
+        tests::test_material(mtl, 4, 0.04888, 0.0, 0.0, color3f(0.11958, 0.02979, 0.02979));
+
+        mtl.updateReflectingCoating(0.41);
+        tests::test_material(mtl, 4, 0.04888, 0.41, 0.0, color3f(0.07055, 0.01757, 0.01757), color3f(0.04902, 0.01221, 0.01221));
+
+        mtl.updateType(material_type::transparent);
+        tests::test_material(mtl, 4, 0.04888, 0.41, 0.0, color3f(), color3f(0.11958, 0.02979, 0.02979), color3f());
+
+        mtl.updateTransparency(0.5);
+        tests::test_material(mtl, 4, 0.04888, 0.41, 0.5, color3f(), color3f(0.08905, 0.03803, 0.03803), color3f(0.91094, 0.38904, 0.38904));
+
+        mtl.updateType(material_type::painted);
+        tests::test_material(mtl, 4, 0.9, 1.0, 0.5, color3f(), color3f(0.9), color3f());
+
+        mtl.updateReflectingCoating(0.36);
+        mtl.updateReflectionFactor(0.59);
+        mtl.updateType(material_type::metallic);
+        tests::test_material(mtl, 4, 0.47943, 0.21239);
+
+        mtl.updateType(material_type::transparent);
+        tests::test_material(mtl, 4, 0.04269, 0.21239, 0.43673);
     }
 
     if (0)
@@ -1248,3 +1341,4 @@ int main()
     system("pause");
     return 0;
 }
+ 

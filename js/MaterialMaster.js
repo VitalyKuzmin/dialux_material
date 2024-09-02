@@ -96,10 +96,10 @@ function check_Yrgb(Yrgb) {
 function changeY(color, Ynew) {
     var Yrgb = to_luminance(color);
     Yrgb = clamp_color_zero(Yrgb);
-    Yrgb = Yrgb.getNorm().multiply(Ynew);
+    Yrgb = Yrgb.getNormalize().multiply(Ynew);
     var diff = check_Yrgb(Yrgb);
     if (diff > 0) {
-        var coeff = K.minus(Yrgb).getNorm();
+        var coeff = K.minus(Yrgb).getNormalize();
         Yrgb = Yrgb.plus(coeff.multiply(diff));
     }
     return Yrgb.divide(K);
@@ -134,6 +134,7 @@ class MaterialMaster {
     Type = "";
     Props = {}
     material = {};
+    upd = true;
 
 
     constructor() {
@@ -188,26 +189,30 @@ class MaterialMaster {
 
 
     setReflF(ReflF) {
+        this.upd = false;
         this.Props.ReflF.setValue(ReflF);
     }
 
 
     setReflC(ReflC) {
+        this.upd = false;
         this.Props.ReflC.setValue(ReflC);
     }
 
 
     setTrans(Trans) {
+        this.upd = false;
         this.Props.Trans.setValue(Trans);
     }
 
 
-    SetMaterial(diff, spec, amb, opacity, Shin, N) {
+    SetMaterial(diff, spec, amb, trans, opacity, Shin, N) {
 
         // convert to sRGB
         diff = diff.func(from_linear);
         spec = spec.func(from_linear);
         amb = amb.func(from_linear);
+        trans = trans.func(from_linear);
 
         this.material.color.setRGB(diff.r, diff.g, diff.b);      // диффузная часть
         this.material.specular.setRGB(spec.r, spec.g, spec.b);   // зеркальный блик 
@@ -269,6 +274,7 @@ class MaterialMaster {
                 this.K = 1;
             }
         }
+        this.upd = true;
     }
 
     updateType() {
@@ -300,6 +306,7 @@ class MaterialMaster {
     }
 
     updateReflectionFactor() {
+        if (!this.upd) return;
         var Props = this.Props;
         var type = Props.Type.getValue();
 
@@ -319,11 +326,13 @@ class MaterialMaster {
 
 
     updateReflectingCoating() {
+        if (!this.upd) return;
         this.recalcGlobalYK();
         this.recalcMaterial();
     }
 
     updateTransparency() {
+        if (!this.upd) return;
         var Props = this.Props;
         var Trans = Props.Trans.getValue();
 
@@ -378,7 +387,7 @@ class MaterialMaster {
 
         var color = this.Color;
 
-        var diff, spec, amb;
+        var diff, spec, amb, trans = new color3f();
         var Shin, N, opacity;
         if (type == "Metallic") {
 
@@ -424,7 +433,7 @@ class MaterialMaster {
 
             diff = new color3f(0, 0, 0);
             spec = Yrgb.multiply(ReflF / Ysum);
-
+            trans = Yrgb.multiply(Trans / Ysum);
             amb = new color3f(Yrgb);
 
             opacity = Trans / Ysum;
@@ -433,7 +442,7 @@ class MaterialMaster {
         }
 
 
-        this.SetMaterial(diff, spec, amb, opacity, Shin, N);
+        this.SetMaterial(diff, spec, amb, trans, opacity, Shin, N);
     }
 
 

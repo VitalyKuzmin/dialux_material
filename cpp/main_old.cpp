@@ -799,7 +799,7 @@ public:
 namespace tests {
 
 
-    void material_test(MaterialMaster master) {
+    void material_1_test(MaterialMaster master) {
 
         Material result = master.getMaterial();
 
@@ -845,7 +845,7 @@ namespace tests {
 
                     master.setColor(color);
 
-                    material_test(master);
+                    material_1_test(master);
                 }
             }
         }
@@ -858,7 +858,7 @@ namespace tests {
         for (u32 t = type::Metallic; t < type::Last; ++t)
         {
             master.setType(t);
-            material_test(master);
+            material_1_test(master);
             test_input_color(master, color_step);
         }
 
@@ -881,21 +881,21 @@ namespace tests {
             reflection_factor += reflection_factor_step;
 
             master.setRefl(reflection_factor);
-            material_test(master);
+            material_1_test(master);
 
             for (u32 j = 0; j < reflection_coating_count; ++j)
             {
                 reflection_coating += reflection_coating_step;
 
                 master.setReflectingCoating(reflection_coating);
-                material_test(master);
+                material_1_test(master);
 
                 for (u32 k = 0; k < transperancy_count; ++k)
                 {
                     transperancy += transperancy_step;
 
                     master.setTrans(transperancy);
-                    material_test(master);
+                    material_1_test(master);
 
                     test_type(master, color_step);
                 }

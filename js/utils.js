@@ -39,7 +39,7 @@ class color3f {
         return this.r + this.g + this.b;
     }
 
-    getNorm() {
+    getNormalize() {
         var sum = this.sum();
         var res = new color3f(this);
         if (sum > 0) {
