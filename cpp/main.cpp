@@ -673,7 +673,9 @@ public:
         setRefractive(refractive);
         setShininess(shininess);
 
-        recalcProps(); // recalcMaterial();
+        recalcGlobalYK();
+        recalcProps(); 
+        recalcMaterial();
 
         return isValidSpectrums();
     }
