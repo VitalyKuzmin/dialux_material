@@ -19,11 +19,16 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="log.h" />
+    <ClInclude Include="Material.h" />
+    <ClInclude Include="PuryaMesh.h" />
+    <ClInclude Include="tests.h" />
+    <ClInclude Include="material_utils.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="mesh_utils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="main_old.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D9A95098-EEFE-49C8-8968-E47705E84E26}</ProjectGuid>

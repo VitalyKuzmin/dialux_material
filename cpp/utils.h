@@ -29,6 +29,13 @@ public:
         b = B;
     }
 
+    void set(const float& value)
+    {
+        r = value;
+        g = value;
+        b = value;
+    }
+
     void show()
     {
         cout << "(" << r << ", " << g << ", " << b << ")";
@@ -219,11 +226,11 @@ struct vertex3f
     void show()
     {
         cout << "cg";
-        cg.show255();
+        cg.show();
         cout << "\n";
 
         cout << "c";
-        c.show255();
+        c.show();
         cout << "\n";
     }
 

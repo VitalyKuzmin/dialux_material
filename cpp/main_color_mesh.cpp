@@ -835,7 +835,7 @@ color3f GetColor(color3f Direct, color3f Photon, float Ymax, color3f diffuse, co
     return Yrgb;
 }
 
-int main()
+int main_color_mesh()
 {
 
     cout << std::fixed << std::setprecision(2);
@@ -865,4 +865,6 @@ int main()
     mesh.normalizeColor(mvt);
     mesh.show();
     system("pause");
+
+    return false;
 }
