@@ -14,7 +14,6 @@
 #include "mesh_utils.h"
 #include "PuryaMesh.h"
 
-
 // Main ----------------------------------------------------------------
 int main()
 {
@@ -99,7 +98,6 @@ int main()
         tests::test_end(mtl, 0.1f, 0.1f, 0.1f, 0.2f);
     }
 
-
     // test Mesh Color
     if (1)
     {
@@ -108,9 +106,8 @@ int main()
         mtl.updateColor(color3f(0.4f, 0.2f, 0.2f));
         mtl.updateReflectingCoating(0.5f);
         mtl.updateReflectionFactor(0.5f);
-        
+
         logMaterial(mtl);
-        
 
         // Create mesh point
         PuryaMesh mesh = PuryaMesh();
@@ -122,12 +119,10 @@ int main()
         mesh.setPoints(point, p_count);
         mesh.setMaterial(mtl);
 
-
         // Calc
         mesh.normalizeColor();
         mesh.show();
         system("pause");
-
     }
 
     system("pause");

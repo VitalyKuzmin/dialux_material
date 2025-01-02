@@ -108,13 +108,13 @@ namespace material_utils
         return from_linear(luminance / K);
     }
 
-    //static float getY(u32 type, float reflection_factor, float reflection_coating, float transparency)
+    // static float getY(u32 type, float reflection_factor, float reflection_coating, float transparency)
     //{
-    //    if (type == material_type::undefined)
-    //    {
-    //        assert(0);
-    //        return 0;
-    //    }
+    //     if (type == material_type::undefined)
+    //     {
+    //         assert(0);
+    //         return 0;
+    //     }
 
     //    float Y(0.0f);
     //    switch (type)
@@ -174,10 +174,8 @@ namespace material_utils
         float diff = check_Yrgb(Yrgb);
         if (diff > 0)
         {
-            color3f coeff = (K - Yrgb).getNormalize();
-            Yrgb += coeff * diff;
+            Yrgb += (K - Yrgb).getNormalize() * diff;
         }
-
         return Yrgb / K; // to linear
     }
 
