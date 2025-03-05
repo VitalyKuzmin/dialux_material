@@ -218,6 +218,10 @@ class MaterialMaster {
         this.material.specular.setRGB(spec.r, spec.g, spec.b);   // зеркальный блик 
         this.material.ambient.setRGB(amb.r, amb.g, amb.b);       // окружение (зеркальный + прозрачный) 
 
+        console.log("diff: " + diff.r + "," +  diff.g + "," + diff.b);
+        console.log("spec: " + spec.r + "," +  spec.g + "," + spec.b);
+        console.log("trans: " + amb.r + "," +  amb.g + "," + amb.b);
+
         this.material.opacity = opacity;           // отношение между 0 - зеркальный, 1 - прозрачный
         this.material.Shin = Shin;                 // блеск (размер зеркального блика)
         this.material.refractionRatio = N;     // коэфиент преломления прозрачной части
