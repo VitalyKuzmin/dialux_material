@@ -211,7 +211,7 @@ class MaterialMaster {
 
         console.log("diff: " + diff.r + "," +  diff.g + "," + diff.b);
         console.log("spec: " + spec.r + "," +  spec.g + "," + spec.b);
-        console.log("trans: " + amb.r + "," +  amb.g + "," + amb.b);
+        console.log("trans: " + trans.r + "," +  trans.g + "," + trans.b);
         
         // convert to sRGB
         diff = diff.func(from_linear);
