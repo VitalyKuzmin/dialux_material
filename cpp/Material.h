@@ -55,9 +55,9 @@ private:
     float m_coeff_T = 0.0f; ///<  coefficient for Transparent material
 
     // energetic (calc)
-    color3f m_diffuse_spectrum;      ///< коэффициент диффузного отражения
-    color3f m_specular_spectrum;     ///< коэффициент зеркального отражения
-    color3f m_transmission_spectrum; ///< прозрачность материала
+    color3f m_diffuse_spectrum;      ///< ГЄГ®ГЅГґГґГЁГ¶ГЁГҐГ­ГІ Г¤ГЁГґГґГіГ§Г­Г®ГЈГ® Г®ГІГ°Г Г¦ГҐГ­ГЁГї
+    color3f m_specular_spectrum;     ///< ГЄГ®ГЅГґГґГЁГ¶ГЁГҐГ­ГІ Г§ГҐГ°ГЄГ Г«ГјГ­Г®ГЈГ® Г®ГІГ°Г Г¦ГҐГ­ГЁГї
+    color3f m_transmission_spectrum; ///< ГЇГ°Г®Г§Г°Г Г·Г­Г®Г±ГІГј Г¬Г ГІГҐГ°ГЁГ Г«Г 
 
     // graphics (opengl)
     color3f m_ambient;
@@ -444,12 +444,12 @@ public:
             return false;
         }
 
-        material_utils::clamp_color(const_cast<color3f&>(color));   // Цвет в формате sRGB [0..1] [0..1] [0..1]
-        material_utils::clamp_value(reflection_factor, 0.0f, 0.9f);  // Коэффициент отражения (Reflection factor) [0..0.9]
-        material_utils::clamp_value(reflection_coating, 0.0f, 1.0f); // Отражение (Reflection coating) [0..1]
-        material_utils::clamp_value(transparency, 0.0f, 1.0f);       // Коэффициент передачи (degree of transmission) [0..1]
-        material_utils::clamp_value(refractive, 1.0f, 2.0f);         // Показатель преломления (Refractive index) [1..2]
-        material_utils::clamp_value(shininess, 0.0f, 1.0f);          // Блескость (Shininess) [0..1]
+        material_utils::clamp_color(const_cast<color3f&>(color));   // Г–ГўГҐГІ Гў ГґГ®Г°Г¬Г ГІГҐ sRGB [0..1] [0..1] [0..1]
+        material_utils::clamp_value(reflection_factor, 0.0f, 0.9f);  // ГЉГ®ГЅГґГґГЁГ¶ГЁГҐГ­ГІ Г®ГІГ°Г Г¦ГҐГ­ГЁГї (Reflection factor) [0..0.9]
+        material_utils::clamp_value(reflection_coating, 0.0f, 1.0f); // ГЋГІГ°Г Г¦ГҐГ­ГЁГҐ (Reflection coating) [0..1]
+        material_utils::clamp_value(transparency, 0.0f, 1.0f);       // ГЉГ®ГЅГґГґГЁГ¶ГЁГҐГ­ГІ ГЇГҐГ°ГҐГ¤Г Г·ГЁ (degree of transmission) [0..1]
+        material_utils::clamp_value(refractive, 1.0f, 2.0f);         // ГЏГ®ГЄГ Г§Г ГІГҐГ«Гј ГЇГ°ГҐГ«Г®Г¬Г«ГҐГ­ГЁГї (Refractive index) [1..2]
+        material_utils::clamp_value(shininess, 0.0f, 1.0f);          // ГЃГ«ГҐГ±ГЄГ®Г±ГІГј (Shininess) [0..1]
 
 #ifdef _HIDE
         setUuid(suuid);
@@ -483,7 +483,7 @@ public:
     float getYfromRgb()
     {
         color3f Yrgb = material_utils::to_luminance(m_color); // sRGB to Y
-        float Y = 0.9f * Yrgb.sum();                          // 10% идет на поглощение
+        float Y = 0.9f * Yrgb.sum();                          // 10% ГЁГ¤ГҐГІ Г­Г  ГЇГ®ГЈГ«Г®Г№ГҐГ­ГЁГҐ
         return Y;
     };
 
@@ -529,7 +529,7 @@ public:
         {
             if (reflection_factor > (1.0f - m_transparency))
             {
-                setTransparency(1 - 1.0f - reflection_factor);
+                setTransparency(1.0f - reflection_factor);
             }
         }
 
